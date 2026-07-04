@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - MyStore</title>
+    <style>
+        /* --- Global & Layout --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f4f7f6;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: 250px;
+            background-color: #fff;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo {
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #128c7e;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .menu {
+            list-style: none;
+            padding: 10px 0;
+            flex-grow: 1;
+        }
+
+        .menu li {
+            padding: 15px 20px;
+            color: #555;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            transition: 0.2s;
+        }
+
+        .menu li:hover {
+            background-color: #f9f9f9;
+        }
+
+        .menu li.active {
+            background-color: #128c7e;
+            color: white;
+            border-radius: 0 25px 25px 0;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+
+        /* --- Main Content --- */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .topbar {
+            background-color: #fff;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: flex-end;
+            border-bottom: 1px solid #e0e0e0;
+            font-weight: 500;
+        }
+
+        .content-area {
+            padding: 30px;
+        }
+
+        .view-section {
+            display: none;
+            /* Default hide all views */
+        }
+
+        .view-section.active-view {
+            display: block;
+            /* Show only active view */
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .page-header h2 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .btn-add {
+            background-color: #128c7e;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-add:hover {
+            background-color: #0e6f63;
+        }
+
+        /* --- Table Styling --- */
+        .table-container {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th,
+        td {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background-color: #fcfcfc;
+            color: #777;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        td {
+            color: #333;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        .td-img img {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: 0.2s;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.1);
+        }
+
+        /* Status Badge colors */
+        .status-select {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 13px;
+            font-weight: 600;
+            outline: none;
+        }
+
+        /* --- Modal Forms --- */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(3px);
+        }
+
+        .modal-content {
+            background: #fff;
+            width: 800px;
+            max-width: 95%;
+            padding: 30px;
+            border-radius: 12px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #888;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            flex: 1;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #444;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            background: #fafafa;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: #128c7e;
+            background: #fff;
+        }
+
+        .hidden-input {
+            display: none;
+            margin-top: 10px;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .btn-cancel {
+            background: #f1f1f1;
+            color: #333;
+            padding: 10px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-submit {
+            background: #128c7e;
+            color: white;
+            padding: 10px 30px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #message {
+            color: #128c7e;
+            font-weight: bold;
+            text-align: right;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .items-list {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        /* --- 🌟 NAYA: Order Tabs & Empty State Styles --- */
+        .order-tabs {
+            display: flex;
+            background: #f9f9f9;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 20px;
+        }
+
+        .order-tab {
+            flex: 1;
+            padding: 14px;
+            background: transparent;
+            border: none;
+            border-right: 1px solid #e0e0e0;
+            font-size: 14px;
+            color: #777;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+
+        .order-tab:last-child {
+            border-right: none;
+        }
+
+        .order-tab.active {
+            background: #fff;
+            color: #222;
+            border-top: 2px solid #5cb85c;
+            /* Green color match from your image */
+            font-weight: bold;
+        }
+
+        .empty-state {
+            text-align: center;
+            background: #fff;
+            padding: 80px 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+        }
+
+        /* --- 👥 CUSTOMERS PREMIUM VIEW STYLES --- */
+        .filter-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+            border: 1px solid #e0e0e0;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .filter-group label {
+            display: block;
+            font-size: 12px;
+            color: #555;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .filter-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .cust-avatar {
+            width: 35px;
+            height: 35px;
+            background: #e0e0e0;
+            border-radius: 50%;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+
+        /* Customer Detail View */
+        .cust-detail-layout {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .cust-main {
+            flex: 1;
+        }
+
+        .cust-sidebar {
+            width: 300px;
+            background: #fff;
+            padding: 30px 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            text-align: center;
+        }
+
+        .cust-sidebar .big-avatar {
+            width: 100px;
+            height: 100px;
+            background: #e2e8f0;
+            border-radius: 50%;
+            margin: 0 auto 15px auto;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            padding: 20px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .stat-card.blue {
+            background: #e3f2fd;
+            color: #0d47a1;
+        }
+
+        .stat-card.green {
+            background: #e8f5e9;
+            color: #1b5e20;
+        }
+
+        .stat-card.red {
+            background: #ffebee;
+            color: #b71c1c;
+        }
+
+        .stat-card.gray {
+            background: #f5f5f5;
+            color: #424242;
+        }
+
+        .stat-info span {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .stat-info h3 {
+            font-size: 18px;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <aside class="sidebar">
+        <div class="logo">MyStore<span style="font-size:12px; color:#999;">.admin</span></div>
+        <ul class="menu">
+            <li data-target="orders-view">📦 Live Orders</li>
+            <li data-target="products-view" class="active">👕 Manage Products</li>
+            <li data-target="customers-view">👥 Customers Database</li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <div class="topbar"><span>⚙️ Store Admin | Control Panel</span></div>
+        <div class="content-area">
+
+            <!-- 📦 LIVE ORDERS VIEW -->
+            <div id="orders-view" class="view-section">
+                <div class="page-header">
+                    <h2>Orders</h2>
+                    <button class="btn-add">+ Create New</button>
+                </div>
+
+                <!-- 🌟 NAYA: Tab Navigation -->
+                <div class="order-tabs">
+                    <button class="order-tab active" data-filter="All">All Orders</button>
+                    <button class="order-tab" data-filter="New">Pending</button>
+                    <button class="order-tab" data-filter="Processing">In Progress</button>
+                    <button class="order-tab" data-filter="Delivered">Completed</button>
+                    <button class="order-tab" data-filter="Cancelled">Cancelled</button>
+                </div>
+
+                <!-- Orders Table -->
+                <div class="table-container" id="ordersTableContainer">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Order Date</th>
+                                <th>Customer Mobile</th>
+                                <th>Items Ordered</th>
+                                <th>Total Amount</th>
+                                <th>Order Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <tr>
+                                <td colspan="6" style="text-align:center;">Loading live orders...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 🌟 NAYA: Empty State (Jab koi order na ho) -->
+                <div id="ordersEmptyState" class="empty-state" style="display: none;">
+                    <div style="font-size: 50px; margin-bottom: 15px;">🛒</div>
+                    <p style="color:#555;">You have not received any orders yet. Once your customers<br>place their
+                        orders on your online store, they will appear here.</p>
+                    <button class="btn-add" style="margin-top: 20px;">+ Create New</button>
+                </div>
+            </div>
+
+            <div id="products-view" class="view-section active-view">
+                <div class="page-header">
+                    <h2>Products Inventory</h2>
+                    <button class="btn-add" id="openModalBtn">+ Add Product</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Image</th>
+                                <th>Name</th>
+                                <th>Main Category</th>
+                                <th>Sub Category</th>
+                                <th>Selling Price</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <tr>
+                                <td colspan="6" style="text-align:center;">Loading products inventory...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="customers-view" class="view-section">
+
+                <div id="customer-list-container">
+                    <div class="page-header">
+                        <h2>Customers</h2>
+                    </div>
+
+                    <div class="filter-card">
+                        <div class="filter-group">
+                            <label>Enter Client's ID / Mobile</label>
+                            <input type="text" id="searchCustomerInput" placeholder="Search by Mobile No..."
+                                onkeyup="filterCustomers()">
+                        </div>
+                        <div class="filter-group">
+                            <label>Joined On</label>
+                            <input type="date">
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Customer Info</th>
+                                    <th>Contact</th>
+                                    <th>Join Date / Last Active</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customersTableBody">
+                                <tr>
+                                    <td colspan="5" style="text-align:center;">Loading customer profiles...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="customer-detail-container" style="display: none;">
+                    <div class="page-header">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <button class="btn-cancel" onclick="backToCustomerList()" style="padding: 8px 15px;">←
+                                Back</button>
+                            <h2>Customer Details</h2>
+                        </div>
+                    </div>
+
+                    <div class="cust-detail-layout">
+                        <div class="cust-main">
+                            <div class="stats-grid">
+                                <div class="stat-card blue">
+                                    <div style="font-size: 24px;">🧾</div>
+                                    <div class="stat-info">
+                                        <span>Total Orders</span>
+                                        <h3 id="detTotalOrders">0</h3>
+                                    </div>
+                                </div>
+                                <div class="stat-card green">
+                                    <div style="font-size: 24px;">💰</div>
+                                    <div class="stat-info">
+                                        <span>Purchase worth</span>
+                                        <h3 id="detPurchaseWorth">₹0.00</h3>
+                                    </div>
+                                </div>
+                                <div class="stat-card red">
+                                    <div style="font-size: 24px;">📅</div>
+                                    <div class="stat-info">
+                                        <span>Joined / Active On</span>
+                                        <h3 id="detJoinedOn">-</h3>
+                                    </div>
+                                </div>
+                                <div class="stat-card gray">
+                                    <div style="font-size: 24px;">🛍️</div>
+                                    <div class="stat-info">
+                                        <span>Last Purchase</span>
+                                        <h3 id="detLastPurchase">-</h3>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h3 style="margin-bottom: 15px; color: #333;">Purchase History</h3>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Order ID</th>
+                                            <th>Date</th>
+                                            <th>Items</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="detPurchaseHistoryBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="cust-sidebar">
+                            <div class="big-avatar"></div>
+                            <h3 id="detSidebarName" style="margin-bottom: 10px;">Customer</h3>
+                            <p id="detSidebarPhone" style="color: #666; font-size: 15px; font-weight: bold;">+91
+                                ----------</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div class="modal" id="productModal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModalBtn">&times;</span>
+            <h3 id="modalTitle">Add New Product</h3>
+
+            <form id="addProductForm">
+                <input type="hidden" id="editProductId" value="">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Main Category</label>
+                        <select id="mainCatSelect" required></select>
+                        <input type="text" id="newMainCatInput" class="hidden-input" placeholder="e.g. Dryfruits">
+                    </div>
+                    <div class="form-group">
+                        <label>Sub Category</label>
+                        <select id="subCatSelect" required></select>
+                        <input type="text" id="newSubCatInput" class="hidden-input" placeholder="e.g. Kismis">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Product Name</label>
+                        <input type="text" id="name" placeholder="e.g. Premium Kismis 1kg" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Product Image URL (Link)</label>
+                        <input type="url" id="img" placeholder="https://..." required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>MRP (₹)</label>
+                        <input type="number" id="mrp" placeholder="e.g. 500" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Selling Price (₹)</label>
+                        <input type="number" id="sellingPrice" placeholder="e.g. 350" required>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>Product Description</label>
+                    <textarea id="desc" rows="2" placeholder="Best quality product..." required></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
+                    <button type="submit" class="btn-submit" id="submitBtn">Save Product</button>
+                </div>
+
+                <p id="message">✅ Saved Successfully!</p>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        // getDocs ke sath onSnapshot, deleteDoc aur updateDoc use kiya hai live updates ke liye
+        import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDkW8QBHruMzQztReP3XmGU5sz8MwSlYEU",
+            authDomain: "rd-catalog.firebaseapp.com",
+            databaseURL: "https://rd-catalog-default-rtdb.firebaseio.com",
+            projectId: "rd-catalog",
+            storageBucket: "rd-catalog.firebasestorage.app",
+            messagingSenderId: "194426515298",
+            appId: "1:194426515298:web:9d572c86a9c80b9fcc463b",
+            measurementId: "G-DXJ5KQ0RZS"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let allProductsData = [];
+        let existingMainCats = new Set();
+        let categoryMap = {};
+
+        // --- 📊 TAB SWITCHING LOGIC ---
+        const menuItems = document.querySelectorAll('.menu li');
+        const viewSections = document.querySelectorAll('.view-section');
+
+        menuItems.forEach(item => {
+            item.addEventListener('click', function () {
+                menuItems.forEach(i => i.classList.remove('active'));
+                viewSections.forEach(v => v.classList.remove('active-view'));
+
+                this.classList.add('active');
+                const targetView = this.getAttribute('data-target');
+                document.getElementById(targetView).classList.add('active-view');
+            });
+        });
+
+        // --- 👕 1. PRODUCTS MANAGEMENT LOGIC ---
+        async function fetchProducts() {
+            const tableBody = document.getElementById('tableBody');
+            try {
+                const querySnapshot = await getDocs(collection(db, "products"));
+                tableBody.innerHTML = '';
+                existingMainCats.clear();
+                categoryMap = {};
+                allProductsData = [];
+
+                if (querySnapshot.empty) {
+                    tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No products found. Add your first product!</td></tr>';
+                    updateMainDropdown();
+                    return;
+                }
+
+                querySnapshot.forEach((doc) => {
+                    let p = doc.data();
+                    p.id = doc.id;
+                    allProductsData.push(p);
+
+                    if (p.mainCategory) {
+                        existingMainCats.add(p.mainCategory);
+                        if (!categoryMap[p.mainCategory]) {
+                            categoryMap[p.mainCategory] = new Set();
+                        }
+                        if (p.subCategory) {
+                            categoryMap[p.mainCategory].add(p.subCategory);
+                        }
+                    }
+
+                    tableBody.innerHTML += `
+                        <tr>
+                            <td class="td-img"><img src="${p.img}" alt="img"></td>
+                            <td><strong>${p.name}</strong></td>
+                            <td>${p.mainCategory}</td>
+                            <td>${p.subCategory || '-'}</td>
+                            <td>₹${p.sellingPrice}</td>
+                            <td>
+                                <button class="action-btn" onclick="window.copyProduct('${p.id}')" title="Copy/Duplicate">📋</button>
+                                <button class="action-btn edit-btn" onclick="window.editProduct('${p.id}')" title="Edit">✏️</button>
+                                <button class="action-btn delete-btn" onclick="window.deleteProduct('${p.id}')" title="Delete">🗑️</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                updateMainDropdown();
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        function updateMainDropdown() {
+            const mainCatSelect = document.getElementById('mainCatSelect');
+            mainCatSelect.innerHTML = '<option value="" disabled selected>Select Category</option>';
+            existingMainCats.forEach(cat => mainCatSelect.innerHTML += `<option value="${cat}">${cat}</option>`);
+            mainCatSelect.innerHTML += '<option value="NEW_ADD">+ Add New Category</option>';
+            updateSubDropdown();
+        }
+
+        function updateSubDropdown(selectedMainCat) {
+            const subCatSelect = document.getElementById('subCatSelect');
+            subCatSelect.innerHTML = '<option value="" disabled selected>Select Sub-category</option>';
+
+            if (selectedMainCat && categoryMap[selectedMainCat]) {
+                categoryMap[selectedMainCat].forEach(sub => {
+                    subCatSelect.innerHTML += `<option value="${sub}">${sub}</option>`;
+                });
+            }
+            subCatSelect.innerHTML += '<option value="NEW_ADD">+ Add New Sub-category</option>';
+        }
+
+        document.getElementById('mainCatSelect').addEventListener('change', function () {
+            const isNewMain = (this.value === 'NEW_ADD');
+            document.getElementById('newMainCatInput').style.display = isNewMain ? 'block' : 'none';
+            if (isNewMain) {
+                document.getElementById('newMainCatInput').focus();
+                updateSubDropdown();
+            } else {
+                updateSubDropdown(this.value);
+            }
+        });
+
+        document.getElementById('subCatSelect').addEventListener('change', function () {
+            document.getElementById('newSubCatInput').style.display = (this.value === 'NEW_ADD') ? 'block' : 'none';
+            if (this.value === 'NEW_ADD') document.getElementById('newSubCatInput').focus();
+        });
+
+        const modal = document.getElementById('productModal');
+        document.getElementById('openModalBtn').addEventListener('click', () => {
+            document.getElementById('addProductForm').reset();
+            document.getElementById('editProductId').value = "";
+            document.getElementById('modalTitle').innerText = "Add New Product";
+            document.getElementById('newMainCatInput').style.display = 'none';
+            document.getElementById('newSubCatInput').style.display = 'none';
+            updateSubDropdown();
+            modal.style.display = 'flex';
+        });
+
+        document.getElementById('closeModalBtn').addEventListener('click', () => modal.style.display = 'none');
+        document.getElementById('cancelBtn').addEventListener('click', () => modal.style.display = 'none');
+
+        window.copyProduct = function (productId) {
+            const p = allProductsData.find(item => item.id === productId);
+            if (p) {
+                document.getElementById('editProductId').value = "";
+                document.getElementById('modalTitle').innerText = "Copy & Add New Product";
+                document.getElementById('mainCatSelect').value = p.mainCategory;
+                updateSubDropdown(p.mainCategory);
+                document.getElementById('subCatSelect').value = p.subCategory;
+                document.getElementById('name').value = p.name;
+                document.getElementById('desc').value = p.desc;
+                document.getElementById('mrp').value = p.mrp;
+                document.getElementById('sellingPrice').value = p.sellingPrice;
+                document.getElementById('img').value = p.img;
+                document.getElementById('newMainCatInput').style.display = 'none';
+                document.getElementById('newSubCatInput').style.display = 'none';
+                modal.style.display = 'flex';
+            }
+        };
+
+        window.editProduct = function (productId) {
+            const p = allProductsData.find(item => item.id === productId);
+            if (p) {
+                document.getElementById('editProductId').value = p.id;
+                document.getElementById('modalTitle').innerText = "Edit Product";
+                document.getElementById('mainCatSelect').value = p.mainCategory;
+                updateSubDropdown(p.mainCategory);
+                document.getElementById('subCatSelect').value = p.subCategory;
+                document.getElementById('name').value = p.name;
+                document.getElementById('desc').value = p.desc;
+                document.getElementById('mrp').value = p.mrp;
+                document.getElementById('sellingPrice').value = p.sellingPrice;
+                document.getElementById('img').value = p.img;
+                document.getElementById('newMainCatInput').style.display = 'none';
+                document.getElementById('newSubCatInput').style.display = 'none';
+                modal.style.display = 'flex';
+            }
+        };
+
+        window.deleteProduct = async function (productId) {
+            if (confirm("Are you sure you want to delete this product?")) {
+                try {
+                    await deleteDoc(doc(db, "products", productId));
+                    fetchProducts();
+                } catch (error) {
+                    alert("Delete error: " + error.message);
+                }
+            }
+        };
+
+        document.getElementById('addProductForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.innerText = "Saving..."; submitBtn.disabled = true;
+
+            let mainVal = document.getElementById('mainCatSelect').value;
+            let subVal = document.getElementById('subCatSelect').value;
+
+            const productData = {
+                mainCategory: mainVal === 'NEW_ADD' ? document.getElementById('newMainCatInput').value.trim() : mainVal,
+                subCategory: subVal === 'NEW_ADD' ? document.getElementById('newSubCatInput').value.trim() : subVal,
+                name: document.getElementById('name').value,
+                desc: document.getElementById('desc').value,
+                mrp: document.getElementById('mrp').value,
+                sellingPrice: document.getElementById('sellingPrice').value,
+                img: document.getElementById('img').value,
+                timestamp: new Date()
+            };
+
+            const editId = document.getElementById('editProductId').value;
+
+            try {
+                if (editId) {
+                    await updateDoc(doc(db, "products", editId), productData);
+                } else {
+                    await addDoc(collection(db, "products"), productData);
+                }
+                document.getElementById('message').style.display = "block";
+                fetchProducts();
+                setTimeout(() => {
+                    document.getElementById('message').style.display = "none";
+                    modal.style.display = 'none';
+                    submitBtn.innerText = "Save Product"; submitBtn.disabled = false;
+                }, 1000);
+            } catch (error) {
+                alert("Error: " + error.message);
+                submitBtn.innerText = "Save Product"; submitBtn.disabled = false;
+            }
+        });
+
+
+        // --- 📦 2. LIVE ORDERS VIEW LOGIC (Real-time tracking) ---
+        // --- 📦 2. LIVE ORDERS VIEW LOGIC (With Tabs Filter) ---
+        let allLiveOrders = []; // Global array filter karne ke liye
+        let currentOrderFilter = 'All'; // Default filter
+
+        function listenLiveOrders() {
+            onSnapshot(collection(db, "orders"), (querySnapshot) => {
+                allLiveOrders = [];
+
+                querySnapshot.forEach((docSnap) => {
+                    allLiveOrders.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                // Naye orders upar dikhane ke liye sort karein
+                allLiveOrders.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
+
+                renderOrdersTable(); // Table ko render karo
+            });
+        }
+
+        // 🌟 NAYA: Table render aur filter karne ka function
+        window.renderOrdersTable = function () {
+            const tbody = document.getElementById('ordersTableBody');
+            const tableContainer = document.getElementById('ordersTableContainer');
+            const emptyState = document.getElementById('ordersEmptyState');
+
+            // Agar filter 'All' nahi hai, toh specific status wale filter karo
+            let filteredOrders = allLiveOrders;
+            if (currentOrderFilter !== 'All') {
+                filteredOrders = allLiveOrders.filter(o => o.status === currentOrderFilter);
+            }
+
+            // Agar koi order nahi hai us tab mein, toh Empty State dikhao
+            if (filteredOrders.length === 0) {
+                tableContainer.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            // Agar order hain toh Table dikhao
+            tableContainer.style.display = 'block';
+            emptyState.style.display = 'none';
+            tbody.innerHTML = '';
+
+            filteredOrders.forEach((order) => {
+                let itemsHtml = '<div class="items-list">';
+                if (order.items && order.items.length > 0) {
+                    order.items.forEach(item => {
+                        itemsHtml += `• ${item.name} <strong>(x${item.quantity})</strong><br>`;
+                    });
+                }
+                itemsHtml += '</div>';
+
+                let orderDate = order.orderDate ? new Date(order.orderDate).toLocaleString() : '-';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><small>${orderDate}</small></td>
+                        <td><strong>+91 ${order.customerMobile}</strong></td>
+                        <td>${itemsHtml}</td>
+                        <td><strong>₹${order.totalAmount}</strong></td>
+                        <td>
+                            <select class="status-select" onchange="window.updateOrderStatus('${order.id}', this.value)" style="background-color: ${getStatusColor(order.status)}; color: ${order.status === 'New' ? '#000' : '#fff'};">
+                                <option value="New" ${order.status === 'New' ? 'selected' : ''}>New 🆕</option>
+                                <option value="Processing" ${order.status === 'Processing' ? 'selected' : ''}>Processing ⏳</option>
+                                <option value="Delivered" ${order.status === 'Delivered' ? 'selected' : ''}>Delivered ✅</option>
+                                <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>Cancelled ❌</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="action-btn delete-btn" onclick="window.deleteOrder('${order.id}')" title="Delete Permanent">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // 🌟 NAYA: Tab click handle karne ka event listener
+        document.querySelectorAll('.order-tab').forEach(tab => {
+            tab.addEventListener('click', function () {
+                // Remove active class from all tabs
+                document.querySelectorAll('.order-tab').forEach(t => t.classList.remove('active'));
+
+                // Add active class to clicked tab
+                this.classList.add('active');
+
+                // Filter set karo aur table update karo
+                currentOrderFilter = this.getAttribute('data-filter');
+                renderOrdersTable();
+            });
+        });
+
+        // Status colors generator helper
+        function getStatusColor(status) {
+            if (status === 'New') return '#ffeeba'; // Yellow
+            if (status === 'Processing') return '#17a2b8'; // Blue
+            if (status === 'Delivered') return '#28a745'; // Green
+            if (status === 'Cancelled') return '#dc3545'; // Red
+            return '#fff';
+        }
+
+        // Change Status in Firestore
+        window.updateOrderStatus = async function (orderId, newStatus) {
+            try {
+                await updateDoc(doc(db, "orders", orderId), { status: newStatus });
+            } catch (error) {
+                alert("Status update error: " + error.message);
+            }
+        };
+
+        // Delete permanent order record
+        window.deleteOrder = async function (orderId) {
+            if (confirm("Are you sure you want to delete this order record permanently from database?")) {
+                try {
+                    await deleteDoc(doc(db, "orders", orderId));
+                } catch (error) {
+                    alert("Order delete error: " + error.message);
+                }
+            }
+        };
+
+
+        // --- 👥 3. CUSTOMERS DATABASE LOGIC (Real-time track) ---
+        // --- 👥 3. CUSTOMERS LOGIC (With Master-Detail View) ---
+        let allCustomersData = [];
+
+        function listenCustomersDatabase() {
+            const customersTableBody = document.getElementById('customersTableBody');
+
+            onSnapshot(collection(db, "customers"), (querySnapshot) => {
+                allCustomersData = [];
+                customersTableBody.innerHTML = '';
+
+                if (querySnapshot.empty) {
+                    customersTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No customer accounts registered yet.</td></tr>';
+                    return;
+                }
+
+                querySnapshot.forEach((docSnap) => {
+                    const cust = docSnap.data();
+                    cust.id = docSnap.id;
+                    allCustomersData.push(cust);
+                });
+
+                renderCustomersTable(allCustomersData);
+            });
+        }
+
+        // Table render karne ka function (Search support ke sath)
+        window.renderCustomersTable = function (dataArray) {
+            const tbody = document.getElementById('customersTableBody');
+            tbody.innerHTML = '';
+
+            if (dataArray.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No customers found.</td></tr>';
+                return;
+            }
+
+            dataArray.forEach(cust => {
+                let lastActive = cust.lastLogin ? new Date(cust.lastLogin).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+
+                // Try to get name from address, else use ID format
+                let displayName = `Customer ID - ${cust.mobileNumber.substring(0, 6)}`;
+                if (cust.addresses && cust.addresses.length > 0 && typeof cust.addresses[0] === 'object') {
+                    displayName = cust.addresses[0].fullName;
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>
+                            <div class="cust-avatar"></div>
+                            <span style="font-weight:600; color:#111;">${displayName}</span>
+                        </td>
+                        <td>+91 ${cust.mobileNumber}</td>
+                        <td>${lastActive}</td>
+                        <td><span style="color:#28a745; font-weight:bold; font-size:12px;">ENABLED</span></td>
+                        <td>
+                            <button class="btn-add" onclick="window.viewCustomer('${cust.mobileNumber}')" style="padding: 6px 12px; font-size:12px;">View Profile</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Live Search Filter Function
+        window.filterCustomers = function () {
+            const searchTerm = document.getElementById('searchCustomerInput').value.toLowerCase();
+            const filtered = allCustomersData.filter(c => c.mobileNumber.includes(searchTerm));
+            renderCustomersTable(filtered);
+        }
+
+        // 🌟 NAYA: Customer Detail Profile Open Karne Ka Logic
+        window.viewCustomer = function (mobileNumber) {
+            const cust = allCustomersData.find(c => c.mobileNumber === mobileNumber);
+            if (!cust) return;
+
+            // 1. Screens switch karein
+            document.getElementById('customer-list-container').style.display = 'none';
+            document.getElementById('customer-detail-container').style.display = 'block';
+
+            // 2. Profile aur Sidebar set karein
+            let displayName = `Customer`;
+            if (cust.addresses && cust.addresses.length > 0 && typeof cust.addresses[0] === 'object') {
+                displayName = cust.addresses[0].fullName;
+            }
+            document.getElementById('detSidebarName').innerText = displayName;
+            document.getElementById('detSidebarPhone').innerText = `+91 ${cust.mobileNumber}`;
+
+            let joinedDate = cust.lastLogin ? new Date(cust.lastLogin).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+            document.getElementById('detJoinedOn').innerText = joinedDate;
+
+            // 3. Customer ki order history calculate karein (hum allLiveOrders array ka use karenge jo orders tab se aa raha hai)
+            const custOrders = allLiveOrders.filter(o => o.customerMobile === mobileNumber);
+
+            let totalSpent = 0;
+            let lastPurchDate = '-';
+            const historyBody = document.getElementById('detPurchaseHistoryBody');
+            historyBody.innerHTML = '';
+
+            if (custOrders.length > 0) {
+                // Calculate Total & render list
+                custOrders.forEach(order => {
+                    // Agar order cancel nahi hua hai, toh usko total worth mein jodo
+                    if (order.status !== 'Cancelled') {
+                        totalSpent += parseFloat(order.totalAmount || 0);
+                    }
+
+                    let oDate = order.orderDate ? new Date(order.orderDate).toLocaleDateString('en-GB') : '-';
+                    let itemsCount = order.items ? order.items.reduce((sum, i) => sum + i.quantity, 0) : 0;
+                    let shortId = "ORD" + order.id.substring(0, 6).toUpperCase();
+
+                    historyBody.innerHTML += `
+                        <tr>
+                            <td><strong>${shortId}</strong></td>
+                            <td>${oDate}</td>
+                            <td>${itemsCount} Items</td>
+                            <td>₹${order.totalAmount}</td>
+                            <td><span class="status-badge ${order.status}" style="padding:4px 8px; font-size:11px; border-radius:4px;">${order.status}</span></td>
+                        </tr>
+                    `;
+                });
+
+                // Get most recent order date
+                const firstOrder = custOrders[0];
+                if (firstOrder && firstOrder.orderDate) {
+                    lastPurchDate = new Date(firstOrder.orderDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                }
+            } else {
+                historyBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#777;">No purchases made yet.</td></tr>`;
+            }
+
+            // Update DOM stats
+            document.getElementById('detTotalOrders').innerText = custOrders.length;
+            document.getElementById('detPurchaseWorth').innerText = `₹${totalSpent.toFixed(2)}`;
+            document.getElementById('detLastPurchase').innerText = lastPurchDate;
+        }
+
+        // Back button function
+        window.backToCustomerList = function () {
+            document.getElementById('customer-detail-container').style.display = 'none';
+            document.getElementById('customer-list-container').style.display = 'block';
+        }
+
+        // --- INITIALIZE ALL LISTENERS ---
+        fetchProducts(); // Products inventory
+        listenLiveOrders(); // Orders tab live updates
+        listenCustomersDatabase(); // Customers database live updates
+    </script>
+</body>
+
+</html>
