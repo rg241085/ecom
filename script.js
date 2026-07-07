@@ -484,10 +484,25 @@ window.closeCheckoutPage = function () {
     document.body.style.overflow = '';
     openCart();
 }
+// 🌟 NAYA HELPER FUNCTION: List band karne aur smooth update ke liye
+window.selectAddressAndRender = function (idx) {
+    checkoutState.selectedAddressIndex = idx;
 
-window.renderCheckoutPage = async function () {
+    // List ko turant close karo
+    const addressList = document.getElementById('chk-body-address');
+    if (addressList) addressList.classList.remove('active');
+
+    // Page ko bina "Loading..." flash kiye smooth update karo
+    window.renderCheckoutPage(true);
+}
+
+window.renderCheckoutPage = async function (isSilentUpdate = false) {
     const container = document.getElementById('checkout-content-container');
-    container.innerHTML = '<p style="text-align:center; padding: 20px;">Loading Secure Checkout...</p>';
+
+    // Agar silent update nahi hai, tabhi loading text dikhao
+    if (!isSilentUpdate) {
+        container.innerHTML = '<p style="text-align:center; padding: 20px;">Loading Secure Checkout...</p>';
+    }
 
     let savedAddresses = [];
     try {
@@ -538,49 +553,61 @@ window.renderCheckoutPage = async function () {
     let finalAmount = sellingTotal - checkoutState.couponDiscount;
 
     let addressHtml = ``;
-    let activeAddressDisplay = `Select / Add Delivery Address`;
+    let activeAddressDisplay = ``;
 
     if (savedAddresses.length > 0) {
         if (checkoutState.selectedAddressIndex >= savedAddresses.length) checkoutState.selectedAddressIndex = 0;
         let activeAddr = savedAddresses[checkoutState.selectedAddressIndex];
 
         if (typeof activeAddr === 'object') {
-            activeAddressDisplay = `${activeAddr.building}, ${activeAddr.area}, ${activeAddr.city} - ${activeAddr.pincode}`;
+            activeAddressDisplay = `
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                    <div style="font-size: 15px; color: #111; font-weight: bold;">Deliver to:</div>
+                    <button onclick="toggleChkBody('chk-body-address')" style="background: #fff; border: 1px solid #d1d5db; padding: 6px 16px; border-radius: 4px; color: #2563eb; font-weight: 600; font-size: 13px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Change</button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <strong style="font-size: 16px; color: #111;">${activeAddr.fullName}</strong>
+                    <span style="background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; color: #555;">${(activeAddr.type || 'HOME').toUpperCase()}</span>
+                </div>
+                <div style="font-size: 14px; color: #444; line-height: 1.5; margin-bottom: 10px;">
+                    ${activeAddr.building}, ${activeAddr.area}, ${activeAddr.city}, ${activeAddr.state} - ${activeAddr.pincode}
+                </div>
+                <div style="font-size: 15px; font-weight: 600; color: #111;">
+                    ${activeAddr.mobile}
+                </div>
+            `;
         } else {
-            activeAddressDisplay = activeAddr.substring(0, 40) + '...';
+            activeAddressDisplay = `<div style="font-size: 14px; color: #444;">${activeAddr}</div>
+            <button onclick="toggleChkBody('chk-body-address')" style="margin-top:10px; background: #fff; border: 1px solid #d1d5db; padding: 6px 16px; border-radius: 4px; color: #2563eb; font-weight: 600; font-size: 13px; cursor: pointer;">Change</button>`;
         }
 
-        addressHtml += `<button style="width:100%; padding:10px; margin-bottom:15px; border-radius:6px; background:#fff; border:1px dashed #128c7e; color:#128c7e; font-weight:bold;" onclick="openNewAddressModal('checkout')">+ Add New Address</button>`;
+        addressHtml += `<button style="width:100%; padding:10px; margin-bottom:15px; border-radius:6px; background:#fff; border:1px dashed #128c7e; color:#128c7e; font-weight:bold;" onclick="window.openNewAddressModal('checkout')">+ Add New Address</button>`;
 
         savedAddresses.forEach((addr, idx) => {
             let isChecked = idx === checkoutState.selectedAddressIndex ? 'checked' : '';
             let isSelectedClass = idx === checkoutState.selectedAddressIndex ? 'selected' : '';
 
             let addrText = typeof addr === 'object' ?
-                `<strong>${addr.fullName}</strong> (${addr.type || 'Home'})<br>${addr.building}, ${addr.area}, ${addr.city}, ${addr.state} - ${addr.pincode}`
+                `<strong style="color:#111;">${addr.fullName}</strong> <span style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold; color: #555; margin-left: 5px;">${(addr.type || 'HOME').toUpperCase()}</span><br><div style="margin-top:4px;">${addr.building}, ${addr.area}, ${addr.city}, ${addr.state} - ${addr.pincode}</div>`
                 : addr;
 
+            // 🌟 NAYA FIX: onclick par event.preventDefault() aur naya helper function lagaya gaya hai
             addressHtml += `
-                <label class="address-radio-label ${isSelectedClass}" onclick="checkoutState.selectedAddressIndex = ${idx}; renderCheckoutPage();">
-                    <div style="font-size:13px; color:#444; line-height:1.4;">${addrText}</div>
-                    <input type="radio" name="addressSelect" class="radio-custom" ${isChecked}>
+                <label class="address-radio-label ${isSelectedClass}" style="position: relative; display: flex; align-items: flex-start; cursor: pointer;" onclick="event.preventDefault(); window.selectAddressAndRender(${idx});">
+                    <div style="flex: 1;">
+                        <div style="font-size:13px; color:#444; line-height:1.4;">${addrText}</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; height: 100%;">
+                        <input type="radio" name="addressSelect" class="radio-custom" ${isChecked} style="pointer-events: none;">
+                        <span style="color:#2563eb; font-size:12px; font-weight:600; cursor:pointer; margin-top: 15px; padding: 4px;" onclick="event.stopPropagation(); window.editAddress(${idx}, 'checkout')">✏️ Edit</span>
+                    </div>
                 </label>
             `;
         });
-    } else {
-        addressHtml = `
-            <div style="text-align:center; padding:15px;">
-                <p style="font-size:13px; color:#666; margin-bottom:10px;">No saved addresses found.</p>
-                <button class="btn-checkout" onclick="openNewAddressModal('checkout')">Add New Address</button>
-            </div>
-        `;
     }
 
-    // 🌟 FIX 1: Header me discount value ki jagah, coupon code hai ya nahi, wo check kiya hai
-    // 🌟 FIX 1: Header me discount value ki jagah, coupon code hai ya nahi, wo check kiya hai
     let offerHeaderText = '';
     if (checkoutState.couponCode !== '') {
-        // NAYA CHANGE YAHAN HAI: Ab Applied ke sath Coupon ka naam bhi aayega 👇
         offerHeaderText = `<span style="color:#10b981;">'${checkoutState.couponCode}' Applied ✅</span>`;
     } else if (availableCoupons.length > 0) {
         let plural = availableCoupons.length > 1 ? 's' : '';
@@ -588,15 +615,18 @@ window.renderCheckoutPage = async function () {
     } else {
         offerHeaderText = '<span style="color:#999;">No offers ➔</span>';
     }
-    // 🌟 FIX 2: Success Message logic updated for all 5 types
+
     container.innerHTML = `
-        <div class="chk-section">
-            <div class="chk-header" onclick="toggleChkBody('chk-body-address')">
-                <div class="chk-header-left"><span class="chk-header-icon">📍</span> Delivery Address</div>
-                <div class="chk-header-right">✎ Edit</div>
+        <div style="background: #fff; border-radius: 10px; margin-bottom: 12px; border: 1px solid #eef0f2; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            ${savedAddresses.length > 0 ? activeAddressDisplay : `
+                <div style="text-align:center; padding:10px;">
+                    <p style="font-size:14px; color:#666; margin-bottom:12px;">No delivery address found.</p>
+                    <button class="btn-checkout" onclick="window.openNewAddressModal('checkout')">+ Add Delivery Address</button>
+                </div>
+            `}
+            <div class="chk-body" id="chk-body-address" style="border-top: 1px dashed #eee; margin-top: 15px; padding-top: 15px;">
+                ${savedAddresses.length > 0 ? addressHtml : ''}
             </div>
-            <div class="saved-address-box" id="chk-display-address">${activeAddressDisplay}</div>
-            <div class="chk-body" id="chk-body-address">${addressHtml}</div>
         </div>
 
         <div class="chk-section">
@@ -648,13 +678,13 @@ window.renderCheckoutPage = async function () {
                 <div class="chk-header-right">${checkoutState.paymentMethod} ⌄</div>
             </div>
             <div class="chk-body active" id="chk-body-payment">
-                <label class="address-radio-label ${checkoutState.paymentMethod === 'COD' ? 'selected' : ''}" onclick="checkoutState.paymentMethod='COD'; renderCheckoutPage();">
+                <label class="address-radio-label ${checkoutState.paymentMethod === 'COD' ? 'selected' : ''}" onclick="checkoutState.paymentMethod='COD'; window.renderCheckoutPage(true);">
                     <div><strong style="color:#111; font-size:14px;">🚚 Cash on delivery</strong><br><span style="color:#666; font-size:12px;">Pay with cash</span></div>
-                    <input type="radio" name="paySelect" class="radio-custom" ${checkoutState.paymentMethod === 'COD' ? 'checked' : ''}>
+                    <input type="radio" name="paySelect" class="radio-custom" ${checkoutState.paymentMethod === 'COD' ? 'checked' : ''} style="pointer-events: none;">
                 </label>
-                <label class="address-radio-label ${checkoutState.paymentMethod === 'UPI' ? 'selected' : ''}" onclick="checkoutState.paymentMethod='UPI'; renderCheckoutPage();">
+                <label class="address-radio-label ${checkoutState.paymentMethod === 'UPI' ? 'selected' : ''}" onclick="checkoutState.paymentMethod='UPI'; window.renderCheckoutPage(true);">
                     <div><strong style="color:#111; font-size:14px;">📱 Pay via UPI</strong><br><span style="color:#666; font-size:12px;">Use any registered UPI ID</span></div>
-                    <input type="radio" name="paySelect" class="radio-custom" ${checkoutState.paymentMethod === 'UPI' ? 'checked' : ''}>
+                    <input type="radio" name="paySelect" class="radio-custom" ${checkoutState.paymentMethod === 'UPI' ? 'checked' : ''} style="pointer-events: none;">
                 </label>
             </div>
         </div>
