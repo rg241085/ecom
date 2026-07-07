@@ -22,6 +22,17 @@
             </div>
         </header>
 
+        <!-- 🔍 NAYA: SEARCH BAR -->
+        <div
+            style="position: sticky; top: 53px; z-index: 105; background: #fff; padding: 10px 15px; border-bottom: 1px solid #eee;">
+            <div
+                style="display: flex; align-items: center; background: #f4f6f8; border-radius: 8px; padding: 0 10px; border: 1px solid #e0e0e0;">
+                <span>🔍</span>
+                <input type="text" id="searchInput" onkeyup="window.handleSearch()" placeholder="Search products..."
+                    style="width: 100%; border: none; background: transparent; padding: 10px; outline: none; font-size: 15px;">
+            </div>
+        </div>
+
         <div id="category-nav" class="category-nav"></div>
 
         <div class="content-wrapper">
@@ -43,6 +54,9 @@
                 <div class="header-left">
                     <span class="icon" onclick="closeCart()">←</span>
                     <h2>Your Cart</h2>
+                    <div id="cart-gift-banner"
+                        style="display: none; background: #ecfdf5; color: #065f46; padding: 12px; text-align: center; font-size: 13px; margin: 10px; border-radius: 6px; border: 1px dashed #10b981; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s ease;">
+                    </div>
                 </div>
             </header>
 
@@ -131,6 +145,50 @@
                 </div>
             </div>
         </div>
+    </div>
+
+
+    <!-- 🛍️ NAYA: PRODUCT DETAILS PAGE (PDP) MODAL -->
+   <div id="pdp-modal" class="cart-modal hidden" style="z-index: 2800; background-color: #f0f2f5; overflow-y: auto;">
+        <header class="header" style="position: sticky; top: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); z-index: 10;">
+            <div class="header-left">
+                <span class="icon" onclick="closePDP()">←</span>
+            </div>
+            <div class="header-right">
+                <span class="icon" onclick="openCart()" style="font-size: 22px;">🛒</span>
+            </div>
+        </header>
+        <main id="pdp-content-container" style="padding-bottom: 80px;"></main>
+        <div class="checkout-bar" style="border-top: 1px solid #eee; display: flex; gap: 10px; background: #fff; z-index: 2801;">
+            <button id="pdp-add-btn" class="btn-checkout" style="flex: 1; background: #fff; color: #128c7e; border: 1px solid #128c7e; padding: 12px;">Add to Cart</button>
+            <button id="pdp-buy-btn" class="btn-checkout" style="flex: 1; padding: 12px;">Buy Now</button>
+        </div>
+    </div>
+
+
+
+    <!-- 🎉 ORDER SUCCESS MODAL -->
+    <div id="order-success-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center; backdrop-filter:blur(3px);">
+        <div
+            style="background:#fff; padding:30px; border-radius:12px; text-align:center; max-width:90%; width:380px; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+            <div style="font-size:60px; margin-bottom:10px;">🎉</div>
+            <h2 style="color:#128c7e; margin-bottom:10px;">Order Placed Successfully!</h2>
+            <p style="color:#555; font-size:14px; margin-bottom:5px;">Thank you for shopping with us.</p>
+            <p style="color:#333; font-weight:bold; font-size:16px; margin-bottom:25px;">Order ID: <span
+                    id="success-order-id" style="color:#128c7e;"></span></p>
+
+            <button onclick="closeSuccessAndOpenProfile()"
+                style="background:#128c7e; color:white; border:none; padding:12px 20px; border-radius:6px; width:100%; font-weight:bold; cursor:pointer; font-size:15px; margin-bottom:10px;">Track
+                Order in Profile</button>
+            <button onclick="closeSuccessModal()"
+                style="background:#f1f1f1; color:#333; border:none; padding:12px 20px; border-radius:6px; width:100%; font-weight:bold; cursor:pointer; font-size:15px;">Continue
+                Shopping</button>
+        </div>
+    </div>
+    <!-- 🎁 NAYA: FLOATING TOAST POPUP NOTIFICATION -->
+    <div id="toast-notification"
+        style="display: none; position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background: #f59e0b; color: #fff; padding: 12px 20px; border-radius: 8px; z-index: 10000; font-size: 14px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: opacity 0.3s ease; text-align: center; width: 90%; max-width: 400px;">
     </div>
 
     <script type="module" src="script.js"></script>
