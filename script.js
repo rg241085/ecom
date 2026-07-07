@@ -1260,9 +1260,8 @@ window.renderMyAddresses = async function () {
         container.innerHTML = '<p style="text-align:center; color:red;">Failed to load addresses.</p>';
     }
 }
-
 // ==========================================
-// 🌐 6. GLOBAL SMART ADDRESS MODAL
+// 🌐 6. GLOBAL SMART ADDRESS MODAL (WITH GPS)
 // ==========================================
 
 let addressModalSource = 'profile';
@@ -1278,15 +1277,27 @@ function injectGlobalAddressModal() {
                 </div>
                 <div class="address-form-body">
                     <input type="hidden" id="editAddressIdx" value="">
+                    
+                    <input type="hidden" id="addrLat" value="">
+                    <input type="hidden" id="addrLng" value="">
+
+                    <button type="button" id="gpsBtn" onclick="window.fetchGPSLocation()" style="background:#e6f4ea; color:#1e8354; border:1px dashed #1e8354; padding:12px; border-radius:8px; width:100%; font-weight:bold; cursor:pointer; margin-bottom:5px; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <span style="font-size:18px;">📍</span> Click to Fetch Exact GPS Location
+                    </button>
+                    <p id="gps-status" style="font-size:12px; color:#555; text-align:center; margin-bottom:15px; font-weight:bold;"></p>
+
                     <input type="text" id="addrFullName" class="addr-input" placeholder="Full Name *" required>
                     <input type="tel" id="addrMobile" class="addr-input" placeholder="Mobile Number (For Delivery) *" required>
                     
                     <input type="email" id="addrEmail" class="addr-input" placeholder="Email Address (Optional)">
-                    <input type="text" id="addrBuilding" class="addr-input" placeholder="Office / Building Name *" required>
+                    <input type="text" id="addrBuilding" class="addr-input" placeholder="House No. / Building Name *" required>
                     <input type="text" id="addrArea" class="addr-input" placeholder="Area / Street / Sector / Village *" required>
+                    
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="addrCity" class="addr-input" placeholder="City *" required style="flex:1;">
+                        <input type="number" id="addrPincode" class="addr-input" placeholder="Pincode *" required style="flex:1;">
+                    </div>
                     <input type="text" id="addrState" class="addr-input" placeholder="State *" required>
-                    <input type="text" id="addrCity" class="addr-input" placeholder="City *" required>
-                    <input type="number" id="addrPincode" class="addr-input" placeholder="Pincode *" required>
                     
                     <div class="addr-type-section">
                         <label>Save address as*</label>
@@ -1298,7 +1309,7 @@ function injectGlobalAddressModal() {
                         <input type="hidden" id="addrTypeSelected" value="Home">
                     </div>
                 </div>
-                <button id="addrSubmitBtn" class="btn-save-address" onclick="saveNewAddress()">Save & Continue</button>
+                <button id="addrSubmitBtn" class="btn-save-address" onclick="saveNewAddress()">Save Address</button>
             </div>
         </div>
     `;
@@ -1306,12 +1317,50 @@ function injectGlobalAddressModal() {
 }
 injectGlobalAddressModal();
 
+// 📍 NAYA FUNCTION: GPS LOCATION FETCH KARNE KE LIYE
+window.fetchGPSLocation = function () {
+    const statusText = document.getElementById('gps-status');
+    const btn = document.getElementById('gpsBtn');
+
+    if (!navigator.geolocation) {
+        statusText.innerHTML = "GPS is not supported by your browser.";
+        statusText.style.color = "red";
+        return;
+    }
+
+    btn.innerHTML = "⏳ Fetching your location...";
+    statusText.innerHTML = "";
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            document.getElementById('addrLat').value = lat;
+            document.getElementById('addrLng').value = lng;
+
+            btn.innerHTML = "✅ GPS Location Saved!";
+            btn.style.background = "#dcfce7";
+            btn.style.borderColor = "#16a34a";
+            btn.style.color = "#16a34a";
+            statusText.innerHTML = "Delivery boy will navigate exactly here.";
+            statusText.style.color = "#16a34a";
+        },
+        (error) => {
+            btn.innerHTML = "<span style='font-size:18px;'>📍</span> Retry GPS Location";
+            statusText.innerHTML = "Failed to get location. Please allow location access when asked.";
+            statusText.style.color = "red";
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+
 window.openNewAddressModal = function (source = 'profile') {
     addressModalSource = source;
     document.getElementById('editAddressIdx').value = "";
     document.getElementById('addressModalTitle').innerText = "Add Delivery Address";
     document.getElementById('addrSubmitBtn').innerText = source === 'checkout' ? "Save & Proceed to Checkout" : "Save Address";
 
+    // Form clear karna
     document.getElementById('addrFullName').value = "";
     document.getElementById('addrMobile').value = loggedInUser || "";
     document.getElementById('addrEmail').value = "";
@@ -1320,6 +1369,13 @@ window.openNewAddressModal = function (source = 'profile') {
     document.getElementById('addrState').value = "";
     document.getElementById('addrCity').value = "";
     document.getElementById('addrPincode').value = "";
+
+    // GPS Reset karna
+    document.getElementById('addrLat').value = "";
+    document.getElementById('addrLng').value = "";
+    document.getElementById('gpsBtn').innerHTML = "<span style='font-size:18px;'>📍</span> Click to Fetch Exact GPS Location";
+    document.getElementById('gpsBtn').style = "background:#e6f4ea; color:#1e8354; border:1px dashed #1e8354; padding:12px; border-radius:8px; width:100%; font-weight:bold; cursor:pointer; margin-bottom:5px; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);";
+    document.getElementById('gps-status').innerHTML = "";
 
     document.getElementById('addrTypeSelected').value = "Home";
     const chips = document.querySelectorAll('.type-chip');
@@ -1334,7 +1390,7 @@ window.editAddress = function (index, source = 'profile') {
     addressModalSource = source;
     const addr = currentSavedAddresses[index];
     if (!addr || typeof addr === 'string') {
-        alert("Puraane format ka address edit nahi ho sakta, delete karke naya add karein.");
+        alert("Please delete old format addresses and add a new one.");
         return;
     }
     document.getElementById('editAddressIdx').value = index;
@@ -1349,6 +1405,23 @@ window.editAddress = function (index, source = 'profile') {
     document.getElementById('addrState').value = addr.state || '';
     document.getElementById('addrCity').value = addr.city || '';
     document.getElementById('addrPincode').value = addr.pincode || '';
+
+    // GPS Pre-fill karna
+    document.getElementById('addrLat').value = addr.lat || "";
+    document.getElementById('addrLng').value = addr.lng || "";
+
+    if (addr.lat && addr.lng) {
+        document.getElementById('gpsBtn').innerHTML = "✅ GPS Location Saved!";
+        document.getElementById('gpsBtn').style.background = "#dcfce7";
+        document.getElementById('gpsBtn').style.borderColor = "#16a34a";
+        document.getElementById('gpsBtn').style.color = "#16a34a";
+        document.getElementById('gps-status').innerHTML = "Location is attached to this address.";
+        document.getElementById('gps-status').style.color = "#16a34a";
+    } else {
+        document.getElementById('gpsBtn').innerHTML = "<span style='font-size:18px;'>📍</span> Click to Fetch Exact GPS Location";
+        document.getElementById('gpsBtn').style = "background:#e6f4ea; color:#1e8354; border:1px dashed #1e8354; padding:12px; border-radius:8px; width:100%; font-weight:bold; cursor:pointer; margin-bottom:5px; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);";
+        document.getElementById('gps-status').innerHTML = "";
+    }
 
     const type = addr.type || 'Home';
     document.getElementById('addrTypeSelected').value = type;
@@ -1383,6 +1456,10 @@ window.saveNewAddress = async function () {
     const type = document.getElementById('addrTypeSelected').value;
     const editIdx = document.getElementById('editAddressIdx').value;
 
+    // GPS values read karna
+    const lat = document.getElementById('addrLat').value;
+    const lng = document.getElementById('addrLng').value;
+
     if (!fullName || !mobile || !building || !area || !state || !city || !pincode) {
         alert("Please fill all required (*) fields");
         return;
@@ -1391,7 +1468,8 @@ window.saveNewAddress = async function () {
     const btn = document.getElementById('addrSubmitBtn');
     btn.innerText = "Saving..."; btn.disabled = true;
 
-    const newAddressObj = { fullName, mobile, email, building, area, state, city, pincode, type };
+    // Address object mein lat, lng save karna
+    const newAddressObj = { fullName, mobile, email, building, area, state, city, pincode, type, lat, lng };
     const docRef = doc(db, "customers", loggedInUser);
 
     try {
@@ -1412,7 +1490,7 @@ window.saveNewAddress = async function () {
                     checkoutState.selectedAddressIndex = docSnap2.data().addresses.length - 1;
                 }
             }
-            renderCheckoutPage();
+            window.renderCheckoutPage(true);
         } else {
             renderMyAddresses();
         }
