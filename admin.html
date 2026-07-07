@@ -486,6 +486,7 @@
                 <li data-target="products-view">👕 Manage Products</li>
                 <li data-target="customers-view">👥 Customers Database</li>
                 <li data-target="offers-view">🎟️ Offers & Coupons</li>
+                <li data-target="delivery-boys-view">🛵 Delivery Partners</li>
             </ul>
         </aside>
 
@@ -562,6 +563,38 @@
                         <div style="font-size: 50px; margin-bottom: 15px;">🛒</div>
                         <p style="color:#555;">You have not received any orders yet.</p>
                         <button class="btn-add" style="margin-top: 20px;">+ Create New</button>
+                    </div>
+                </div>
+
+                <div id="delivery-boys-view" class="view-section">
+                    <div class="page-header">
+                        <h2>Manage Delivery Partners</h2>
+                    </div>
+
+                    <div class="filter-card"
+                        style="margin-bottom: 20px; max-width: 600px; display: flex; gap: 15px; align-items: flex-end;">
+                        <div class="form-group" style="flex: 1; margin: 0;">
+                            <label>Add New Delivery Boy (Name)</label>
+                            <input type="text" id="newBoyName" placeholder="e.g. Ramesh Singh" style="margin-top: 5px;">
+                        </div>
+                        <button onclick="addDeliveryBoy()" class="btn-submit"
+                            style="background: #128c7e; height: 43px;">+ Add Partner</button>
+                    </div>
+
+                    <div class="table-container" style="max-width: 600px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Delivery Boy Name</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deliveryBoysTableBody">
+                                <tr>
+                                    <td colspan="2" style="text-align:center;">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -1087,6 +1120,7 @@
                 listenLiveOrders();
                 listenCustomersDatabase();
                 listenCoupons();
+                listenDeliveryBoys(); // Naya add kiya hai
                 loadGiftSettings();
             } else {
                 document.getElementById('admin-login-screen').style.display = 'flex';
@@ -1578,6 +1612,8 @@
             emptyState.style.display = 'none';
             tbody.innerHTML = '';
 
+        
+
             filteredOrders.forEach(order => {
                 let itemsHtml = '<div class="items-list">';
                 if (order.items) order.items.forEach(item => itemsHtml += `• ${item.name} <strong>(x${item.quantity})</strong><br>`);
@@ -1588,11 +1624,16 @@
                 let selectColor = order.status === 'New' ? '#ffeeba' : order.status === 'Processing' ? '#17a2b8' : order.status === 'Delivered' ? '#28a745' : '#dc3545';
                 let textColor = order.status === 'New' ? '#000' : '#fff';
 
-                // 👉 NAYA LOGIC: Customer ka naam nikalna order data se
-                let custName = "Customer"; // Default name
+                let custName = "Customer";
                 if (order.deliveryAddress && typeof order.deliveryAddress === 'object' && order.deliveryAddress.fullName) {
                     custName = order.deliveryAddress.fullName;
                 }
+
+               // 🌟 DYNAMIC Delivery Boy Dropdown HTML
+                let boyOptions = `<option value="Unassigned" ${!order.deliveryBoy || order.deliveryBoy === 'Unassigned' ? 'selected' : ''}>Unassigned</option>`;
+                allDeliveryBoys.forEach(boy => {
+                    boyOptions += `<option value="${boy.name}" ${order.deliveryBoy === boy.name ? 'selected' : ''}>${boy.name}</option>`;
+                });
 
                 tbody.innerHTML += `
                     <tr>
@@ -1604,11 +1645,15 @@
                         <td>${itemsHtml}</td>
                         <td><strong>₹${order.totalAmount}</strong></td>
                         <td>
-                            <select class="status-select" onchange="window.updateOrderStatus('${order.id}', this.value)" style="background-color: ${selectColor}; color: ${textColor};">
+                            <select class="status-select" onchange="window.updateOrderStatus('${order.id}', this.value)" style="background-color: ${selectColor}; color: ${textColor}; margin-bottom: 5px; width: 100%;">
                                 <option value="New" ${order.status === 'New' ? 'selected' : ''}>New 🆕</option>
                                 <option value="Processing" ${order.status === 'Processing' ? 'selected' : ''}>Processing ⏳</option>
                                 <option value="Delivered" ${order.status === 'Delivered' ? 'selected' : ''}>Delivered ✅</option>
                                 <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>Cancelled ❌</option>
+                            </select>
+                            <br>
+                            <select class="status-select" onchange="window.assignDeliveryBoy('${order.id}', this.value)" style="width: 100%; border: 1px solid #128c7e; color: #128c7e; background: #e6f4ea;">
+                                ${boyOptions}
                             </select>
                         </td>
                         <td style="white-space: nowrap;">
@@ -1618,6 +1663,17 @@
                     </tr>`;
             });
         }
+
+        // 🛵 NAYA FUNCTION: Order ko delivery boy ko assign karne ke liye
+        window.assignDeliveryBoy = async function (orderId, boyName) {
+            try {
+                await updateDoc(doc(db, "orders", orderId), { deliveryBoy: boyName });
+                // Optional: Alert dikhana ho toh uncomment karein
+                // alert(`Order assigned to ${boyName}`);
+            } catch (error) {
+                alert("Error assigning delivery boy: " + error.message);
+            }
+        };
         document.querySelectorAll('.order-tab').forEach(tab => {
             tab.addEventListener('click', function () {
                 document.querySelectorAll('.order-tab').forEach(t => t.classList.remove('active'));
@@ -1817,6 +1873,58 @@
                 win.close();
             }, 500);
         };
+
+        // ==========================================
+        // 🛵 DELIVERY PARTNERS LOGIC
+        // ==========================================
+        let allDeliveryBoys = [];
+
+        function listenDeliveryBoys() {
+            onSnapshot(collection(db, "deliveryBoys"), (snapshot) => {
+                allDeliveryBoys = [];
+                const tbody = document.getElementById('deliveryBoysTableBody');
+                if (tbody) tbody.innerHTML = '';
+
+                if (snapshot.empty) {
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;">No delivery boys found. Add one!</td></tr>';
+                } else {
+                    snapshot.forEach(docSnap => {
+                        const b = { id: docSnap.id, ...docSnap.data() };
+                        allDeliveryBoys.push(b);
+                        if (tbody) {
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td><strong style="color: #111; font-size: 15px;">${b.name}</strong></td>
+                                    <td>
+                                        <button class="action-btn delete-btn" onclick="deleteDeliveryBoy('${b.id}')" title="Remove">🗑️</button>
+                                    </td>
+                                </tr>
+                            `;
+                        }
+                    });
+                }
+                // Agar active orders screen khuli hai toh dropdown ko refresh karo
+                if (document.getElementById('ordersTableContainer')) window.renderOrdersTable();
+            });
+        }
+
+        window.addDeliveryBoy = async function () {
+            const nameInput = document.getElementById('newBoyName');
+            const name = nameInput.value.trim();
+            if (!name) { alert("Please enter delivery boy name!"); return; }
+
+            try {
+                await addDoc(collection(db, "deliveryBoys"), { name: name, createdAt: new Date().toISOString() });
+                nameInput.value = '';
+                alert("Delivery Partner added successfully!");
+            } catch (e) { alert("Error: " + e.message); }
+        }
+
+        window.deleteDeliveryBoy = async function (id) {
+            if (confirm("Are you sure you want to remove this delivery partner?")) {
+                await deleteDoc(doc(db, "deliveryBoys", id));
+            }
+        }
 
     </script>
 </body>
