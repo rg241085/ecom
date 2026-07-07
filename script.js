@@ -1,6 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, onSnapshot, addDoc, doc, setDoc, query, where, getDocs, updateDoc, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-// 🌟 NAYA IMPORT: Firebase Auth OTP ke liye
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -16,15 +15,31 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const auth = getAuth(app); // 🌟 Auth initialize kiya
-auth.useDeviceLanguage();  // OTP SMS local language me bhejne ke liye
+const auth = getAuth(app);
+auth.useDeviceLanguage();
 
 const mainContainer = document.getElementById('catalog-main');
-// ... baaki puraana code
+
 let cart = [];
 let allProducts = [];
 let productsByCategory = {};
 let selectedCategory = "All";
+
+// 🎟️ Coupons State
+let availableCoupons = [];
+
+function listenCoupons() {
+    onSnapshot(collection(db, "coupons"), (snapshot) => {
+        availableCoupons = [];
+        snapshot.forEach(docSnap => {
+            if (docSnap.data().isActive) {
+                availableCoupons.push({ id: docSnap.id, ...docSnap.data() });
+            }
+        });
+    });
+}
+
+
 
 // 🌟 SMART LOGIN SYSTEM
 let loggedInUser = localStorage.getItem('customerMobile') || null;
@@ -144,7 +159,7 @@ function renderCatalog() {
             let section = document.createElement('div');
             section.classList.add('category-section');
             section.innerHTML += `<div class="category-header"><h3>${categoryName}</h3></div>`;
-            products.forEach(product => { section.appendChild(createProductItem(product)); });
+            products.forEach(product => { section.appendChild(window.createProductItem(product)); });
             mainContainer.appendChild(section);
         }
     } else {
@@ -168,36 +183,32 @@ function renderCatalog() {
             section.classList.add('category-section');
             section.id = `section-${cleanSubId}`;
             section.innerHTML += `<div class="category-header"><h3 style="color:#128c7e;">${sub}</h3></div>`;
-            productsGroupedBySub[sub].forEach(product => { section.appendChild(createProductItem(product)); });
+            productsGroupedBySub[sub].forEach(product => { section.appendChild(window.createProductItem(product)); });
             mainContainer.appendChild(section);
         });
         setupIntersectionObserver();
     }
 }
 
-function createProductItem(product) {
+window.createProductItem = function (product) {
     let div = document.createElement('div');
     div.classList.add('product-item');
-
     const cartItem = cart.find(item => item.id === product.id);
     let actionHTML = '';
 
-    if (cartItem) {
-        actionHTML = `
-            <div class="qty-controls">
-                <button class="btn-qty" onclick="window.decreaseQuantity('${product.id}')">-</button>
-                <span class="qty-count">${cartItem.quantity}</span>
-                <button class="btn-qty" onclick="window.addToCart('${product.id}')">+</button>
-            </div>
-        `;
+    // 🌟 Check if Out of Stock
+    if (product.stockQty !== undefined && product.stockQty <= 0) {
+        actionHTML = `<span style="color:#dc3545; font-weight:bold; font-size:13px; padding: 6px 15px; background: #fff0f0; border-radius: 6px;">Out of Stock</span>`;
+    } else if (cartItem) {
+        actionHTML = `<div class="qty-controls"><button class="btn-qty" onclick="window.decreaseQuantity('${product.id}')">-</button><span class="qty-count">${cartItem.quantity}</span><button class="btn-qty" onclick="window.addToCart('${product.id}')">+</button></div>`;
     } else {
         actionHTML = `<button class="btn-add" onclick="window.addToCart('${product.id}')">ADD</button>`;
     }
 
     div.innerHTML = `
-        <img src="${product.img}" alt="Product" class="product-img">
+        <img src="${product.img}" alt="Product" class="product-img" style="cursor:pointer;" onclick="window.openPDP('${product.id}')">
         <div class="product-info">
-            <h4 class="product-title">${product.name}</h4>
+            <h4 class="product-title" style="cursor:pointer;" onclick="window.openPDP('${product.id}')">${product.name}</h4>
             <p class="product-desc">${product.desc}</p>
             <div class="price-container">
                 <span class="current-price">₹${product.sellingPrice}</span>
@@ -209,7 +220,6 @@ function createProductItem(product) {
     return div;
 }
 
-
 // ==========================================
 // 🛒 2. CART LOGIC
 // ==========================================
@@ -218,10 +228,22 @@ window.addToCart = function (productId) {
     const product = allProducts.find(p => p.id === productId);
     if (product) {
         const existingItem = cart.find(item => item.id === productId);
+        let currentQty = existingItem ? existingItem.quantity : 0;
+
+        // 🌟 Limit and Stock Validation
+        if (product.stockQty !== undefined && currentQty >= product.stockQty) {
+            window.showToast(`Sorry, only ${product.stockQty} items left in stock!`, false);
+            return;
+        }
+        if (product.maxPerOrder && product.maxPerOrder > 0 && currentQty >= product.maxPerOrder) {
+            window.showToast(`Limit reached! You can only buy ${product.maxPerOrder} qty per order.`, false);
+            return;
+        }
+
         if (existingItem) { existingItem.quantity += 1; }
         else { cart.push({ ...product, quantity: 1 }); }
         updateProductActionUI(productId);
-        updateCartUI();
+        updateCartUI(true);
     }
 }
 
@@ -231,7 +253,7 @@ window.decreaseQuantity = function (productId) {
         if (cart[itemIndex].quantity > 1) { cart[itemIndex].quantity -= 1; }
         else { cart.splice(itemIndex, 1); }
         updateProductActionUI(productId);
-        updateCartUI();
+        updateCartUI(true);
     }
 }
 
@@ -246,7 +268,16 @@ function updateProductActionUI(productId) {
     }
 }
 
-function updateCartUI() {
+// let lastGiftEligibility = false;
+
+
+
+function updateCartUI(showPopup = false) {
+    // Naya Coupon Nudge system call karega (sirf cart modal me dikhega, screen par nahi)
+    if (typeof window.evaluateCouponNudges === 'function') {
+        window.evaluateCouponNudges();
+    }
+
     const checkoutBar = document.getElementById('checkout-bar');
     const cartCount = document.getElementById('cart-count');
     const cartTotal = document.getElementById('cart-total');
@@ -286,31 +317,36 @@ window.closeCart = function () {
 function renderCartItems() {
     const container = document.getElementById('cart-items-container');
     container.innerHTML = '';
+
     cart.forEach(item => {
         let div = document.createElement('div');
         div.classList.add('cart-item');
-        div.innerHTML = `
-            <img src="${item.img}" alt="img" class="cart-item-img">
-            <div class="cart-item-info">
-                <div class="cart-item-title">${item.name}</div>
-                <div class="cart-item-price">₹${item.sellingPrice}</div>
-            </div>
-            <div class="qty-controls">
+
+        let qtyControlsHtml = item.isFreeGift ?
+            `<span style="color:#10b981; font-weight:bold; font-size:13px; padding: 5px 10px; background: #ecfdf5; border-radius: 4px;">FREE GIFT</span>` :
+            `<div class="qty-controls">
                 <button class="btn-qty" onclick="window.decreaseQuantity('${item.id}')">-</button>
                 <span class="qty-count">${item.quantity}</span>
                 <button class="btn-qty" onclick="window.addToCart('${item.id}')">+</button>
+            </div>`;
+
+        div.innerHTML = `
+            <img src="${item.img}" alt="img" class="cart-item-img">
+            <div class="cart-item-info">
+                <div class="cart-item-title" style="${item.isFreeGift ? 'color:#065f46; font-weight:bold;' : ''}">${item.name}</div>
+                <div class="cart-item-price">${item.isFreeGift ? '<strike>₹' + item.mrp + '</strike> ₹0' : '₹' + item.sellingPrice}</div>
             </div>
+            ${qtyControlsHtml}
         `;
         container.appendChild(div);
     });
 }
 
-
 // ==========================================
 // 🔐 3. FIREBASE OTP LOGIN & AUTH LOGIC
 // ==========================================
 
-let recaptchaWidgetId = null; // 🌟 NAYA: Widget ID store karne ke liye
+let recaptchaWidgetId = null;
 
 window.openLoginModal = function (intent = 'checkout') {
     currentLoginIntent = intent;
@@ -327,7 +363,6 @@ window.openLoginModal = function (intent = 'checkout') {
     resetLoginUI();
     document.getElementById('login-overlay').classList.add('active');
 
-    // 🌟 NAYA: reCAPTCHA ko sirf ek baar banayenge jab modal khulega, taaki usko load hone ka time mil sake
     if (!window.recaptchaVerifier) {
         window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
             'size': 'invisible'
@@ -336,7 +371,6 @@ window.openLoginModal = function (intent = 'checkout') {
             recaptchaWidgetId = widgetId;
         });
     } else if (recaptchaWidgetId !== null) {
-        // Agar pehle se bana hai, toh purane cache ko clear karne ke liye reset karenge
         grecaptcha.reset(recaptchaWidgetId);
     }
 }
@@ -353,7 +387,6 @@ window.resetLoginUI = function () {
     document.getElementById('otpInput').value = "";
 }
 
-// 📱 OTP Bhejne Ka Function
 window.sendOTP = function () {
     const mobile = document.getElementById('mobileNumber').value.trim();
     const btn = document.getElementById('sendOtpBtn');
@@ -368,35 +401,25 @@ window.sendOTP = function () {
 
     const phoneNumber = "+91" + mobile;
 
-    // Seedha SMS bhejenge kyunki reCAPTCHA background me pehle hi ready ho chuka hai
     signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier)
         .then((confirmationResult) => {
-            // SMS chala gaya!
             window.confirmationResult = confirmationResult;
-
             document.getElementById('step1-phone').style.display = 'none';
             document.getElementById('step2-otp').style.display = 'block';
             document.getElementById('loginHelpText').innerHTML = `OTP sent to <strong>+91 ${mobile}</strong>`;
-
             btn.innerText = "Send OTP";
             btn.disabled = false;
         }).catch((error) => {
             console.error("SMS not sent", error);
             alert("Firebase Error: " + error.code + "\n\n" + error.message);
-
             btn.innerText = "Send OTP";
             btn.disabled = false;
-
-            // 🚨 Error aane par reCAPTCHA ko smoothly reset karenge
             if (recaptchaWidgetId !== null) {
-                try {
-                    grecaptcha.reset(recaptchaWidgetId);
-                } catch (e) { }
+                try { grecaptcha.reset(recaptchaWidgetId); } catch (e) { }
             }
         });
 }
 
-// 🔑 OTP Verify Karne Ka Function
 window.verifyOTP = async function () {
     const otpCode = document.getElementById('otpInput').value.trim();
     const btn = document.getElementById('verifyOtpBtn');
@@ -412,7 +435,6 @@ window.verifyOTP = async function () {
 
     try {
         const result = await window.confirmationResult.confirm(otpCode);
-        const user = result.user; // Login successful!
 
         await setDoc(doc(db, "customers", mobile), {
             mobileNumber: mobile,
@@ -431,7 +453,6 @@ window.verifyOTP = async function () {
         } else if (currentLoginIntent === 'profile') {
             openProfile();
         }
-
     } catch (error) {
         console.error("OTP Verification failed", error);
         alert("Invalid OTP! Please enter the correct code.");
@@ -439,8 +460,9 @@ window.verifyOTP = async function () {
         btn.disabled = false;
     }
 }
+
 // ==========================================
-// 💳 4. PREMIUM CHECKOUT LOGIC
+// 💳 4. PREMIUM CHECKOUT LOGIC & PROMO CODES
 // ==========================================
 
 let checkoutState = {
@@ -500,6 +522,19 @@ window.renderCheckoutPage = async function () {
     });
 
     let itemDiscount = mrpTotal - sellingTotal;
+
+    // 🌟 Promo Code Integrity Check
+    if (checkoutState.couponCode !== '') {
+        const appliedCpn = availableCoupons.find(c => c.code === checkoutState.couponCode);
+        let eligibleTotal = 0;
+        cart.forEach(item => { if (!item.isPromoGift && !item.isFreeGift) eligibleTotal += (parseFloat(item.sellingPrice) * item.quantity); });
+
+        if (!appliedCpn || eligibleTotal < appliedCpn.minOrder) {
+            window.removeCoupon(false);
+            window.showToast("Cart value dropped below requirement. Promo removed automatically.", false);
+        }
+    }
+
     let finalAmount = sellingTotal - checkoutState.couponDiscount;
 
     let addressHtml = ``;
@@ -541,6 +576,19 @@ window.renderCheckoutPage = async function () {
         `;
     }
 
+    // 🌟 FIX 1: Header me discount value ki jagah, coupon code hai ya nahi, wo check kiya hai
+    // 🌟 FIX 1: Header me discount value ki jagah, coupon code hai ya nahi, wo check kiya hai
+    let offerHeaderText = '';
+    if (checkoutState.couponCode !== '') {
+        // NAYA CHANGE YAHAN HAI: Ab Applied ke sath Coupon ka naam bhi aayega 👇
+        offerHeaderText = `<span style="color:#10b981;">'${checkoutState.couponCode}' Applied ✅</span>`;
+    } else if (availableCoupons.length > 0) {
+        let plural = availableCoupons.length > 1 ? 's' : '';
+        offerHeaderText = `${availableCoupons.length} Offer${plural} available ➔`;
+    } else {
+        offerHeaderText = '<span style="color:#999;">No offers ➔</span>';
+    }
+    // 🌟 FIX 2: Success Message logic updated for all 5 types
     container.innerHTML = `
         <div class="chk-section">
             <div class="chk-header" onclick="toggleChkBody('chk-body-address')">
@@ -561,15 +609,22 @@ window.renderCheckoutPage = async function () {
 
         <div class="chk-section">
             <div class="chk-header" onclick="toggleChkBody('chk-body-coupon')">
-                <div class="chk-header-left"><span class="chk-header-icon">🏷️</span> Coupons</div>
-                <div class="chk-header-right">${checkoutState.couponDiscount > 0 ? 'Applied ✅' : '0+ available ➔'}</div>
+                <div class="chk-header-left"><span class="chk-header-icon">🏷️</span> Apply Promo Code</div>
+                <div class="chk-header-right" style="color: #128c7e; font-weight: bold;">${offerHeaderText}</div>
             </div>
             <div class="chk-body" id="chk-body-coupon">
-                <div class="coupon-input-box">
-                    <input type="text" id="couponInputText" placeholder="Enter Coupon Code" value="${checkoutState.couponCode}">
-                    <button onclick="applyCoupon()">APPLY</button>
+                <div class="coupon-input-box" style="margin-bottom: 15px;">
+                    <input type="text" id="coupon-input" placeholder="Enter Coupon Code" value="${checkoutState.couponCode}" style="flex:1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; text-transform: uppercase;">
+                    <button onclick="applyManualCoupon()" style="background: #128c7e; color: white; border: none; padding: 0 15px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-left:10px;">APPLY</button>
                 </div>
-                ${checkoutState.couponDiscount > 0 ? `<p style="color:#1e8354; font-size:12px; margin-top:8px;">Coupon Applied! You saved ₹${checkoutState.couponDiscount}</p>` : ''}
+                
+                <div id="applied-coupon-msg" style="display: ${checkoutState.couponCode !== '' ? 'block' : 'none'}; color: #10b981; font-weight: bold; font-size: 13px; margin-bottom: 10px; background: #ecfdf5; padding: 10px; border-radius: 6px; border: 1px dashed #10b981;">
+                    ✅ '${checkoutState.couponCode}' applied. ${checkoutState.couponDiscount > 0 ? `You saved ₹${Math.round(checkoutState.couponDiscount)}!` : 'Reward added to your cart!'} 
+                    <span onclick="window.removeCoupon()" style="color: #dc3545; cursor: pointer; text-decoration: underline; margin-left: 10px; float: right;">Remove</span>
+                </div>
+                
+                <div id="available-coupons-list" style="display: ${checkoutState.couponCode !== '' ? 'none' : 'flex'}; flex-direction: column; gap: 10px;">
+                </div>
             </div>
         </div>
 
@@ -581,7 +636,7 @@ window.renderCheckoutPage = async function () {
             <div class="chk-body active" id="chk-body-price">
                 <div class="price-row"><span>Items Total</span><span>₹${mrpTotal}</span></div>
                 <div class="price-row discount"><span>Discount</span><span>-₹${itemDiscount}</span></div>
-                <div class="price-row discount"><span>Coupon Discount</span><span>-₹${checkoutState.couponDiscount}</span></div>
+                <div class="price-row discount" style="display: ${checkoutState.couponDiscount > 0 ? 'flex' : 'none'};"><span>Coupon Discount</span><span>-₹${checkoutState.couponDiscount}</span></div>
                 <div class="price-row"><span>Shipping</span><span><span style="color:#1e8354">FREE</span></span></div>
                 <div class="price-row total"><span>Total Amount</span><span>₹${finalAmount}</span></div>
             </div>
@@ -604,6 +659,8 @@ window.renderCheckoutPage = async function () {
             </div>
         </div>
     `;
+
+    setTimeout(() => { window.renderAvailableCoupons(); }, 100);
 }
 
 window.toggleChkBody = function (id) {
@@ -612,24 +669,223 @@ window.toggleChkBody = function (id) {
     else el.classList.add('active');
 }
 
-window.applyCoupon = function () {
-    const code = document.getElementById('couponInputText').value.toUpperCase().trim();
-    if (code === 'WELCOME50') {
-        checkoutState.couponCode = code;
-        checkoutState.couponDiscount = 50;
-        renderCheckoutPage();
-    } else {
-        alert("Invalid or Expired Coupon Code!");
-        checkoutState.couponCode = '';
-        checkoutState.couponDiscount = 0;
-        renderCheckoutPage();
+
+window.renderAvailableCoupons = function () {
+    const list = document.getElementById('available-coupons-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    let eligibleTotal = 0;
+    cart.forEach(item => { if (!item.isPromoGift && !item.isFreeGift) eligibleTotal += (parseFloat(item.sellingPrice) * item.quantity); });
+
+    // 🌟 Sirf Valid (Non-Expired) Coupons Customer ko dikhayenge
+    let validCoupons = availableCoupons.filter(c => {
+        if (c.expiryDate) {
+            return new Date(c.expiryDate) >= new Date(new Date().setHours(0, 0, 0, 0));
+        }
+        return true;
+    });
+
+    if (validCoupons.length === 0) {
+        list.innerHTML = '<p style="font-size: 13px; color: #777; text-align: center;">No offers available right now.</p>';
+        return;
+    }
+
+    validCoupons.forEach(c => {
+        let isEligible = eligibleTotal >= c.minOrder;
+
+        let discountText = '';
+        if (c.type === 'FLAT') discountText = `₹${c.details ? c.details.discountValue : c.value} OFF`;
+        else if (c.type === 'PERCENT') discountText = `${c.details ? c.details.discountPercent : c.value}% OFF`;
+        else if (c.type === 'FREE_GIFT') discountText = `🎁 Free Gift Included`;
+        else if (c.type === 'FREE_CHOICE') discountText = `🎁 Choose 1 Free Item`;
+        else if (c.type === 'DISCOUNTED_CHOICE') discountText = `🔥 Special Discounted Item`;
+
+        list.innerHTML += `
+            <div style="border: 1px dashed ${isEligible ? '#128c7e' : '#ccc'}; padding: 12px; border-radius: 6px; background: ${isEligible ? '#f0fdf4' : '#f9f9f9'}; opacity: ${isEligible ? '1' : '0.6'}; transition: 0.3s; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <strong style="color: #111; font-size: 15px;">${c.code}</strong>
+                    ${isEligible
+                ? `<button onclick="window.applyCoupon('${c.code}')" style="background: transparent; border: 1px solid #128c7e; color: #128c7e; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">APPLY</button>`
+                : `<span style="font-size: 11px; color: #e11d48; font-weight: bold;">Add ₹${c.minOrder - eligibleTotal} more</span>`
+            }
+                </div>
+                <div style="font-size: 12px; color: #555; margin-top: 4px;">${discountText} on orders above ₹${c.minOrder}</div>
+            </div>
+        `;
+    });
+}
+window.applyManualCoupon = function () {
+    const code = document.getElementById('coupon-input').value.toUpperCase().trim();
+    if (!code) return;
+    window.applyCoupon(code);
+}
+
+// ==========================================
+// 🎟️ ADVANCE PROMO CODE & REWARD LOGIC
+// ==========================================
+
+// Cart Nudge Logic (Update Cart UI me call hoga)
+window.evaluateCouponNudges = function () {
+    const banner = document.getElementById('cart-gift-banner');
+    if (!banner) return;
+    banner.style.display = 'none';
+
+    let eligibleTotal = 0;
+    cart.forEach(item => { if (!item.isPromoGift && !item.isFreeGift) eligibleTotal += (parseFloat(item.sellingPrice) * item.quantity); });
+
+    // Find upcoming coupons that have a nudge message
+    let upcomingCoupons = availableCoupons.filter(c => c.minOrder > eligibleTotal && c.nudgeMsg);
+    upcomingCoupons.sort((a, b) => a.minOrder - b.minOrder);
+
+    if (upcomingCoupons.length > 0) {
+        let targetCoupon = upcomingCoupons[0];
+        let remaining = targetCoupon.minOrder - eligibleTotal;
+        let msg = targetCoupon.nudgeMsg.replace('{amount}', remaining);
+        banner.innerHTML = `🌟 ${msg}`;
+        banner.style.display = 'block';
     }
 }
 
+// Update `updateCartUI` function to use new Nudge system
+// Find `evaluateFreeGift(showPopup);` inside updateCartUI and REPLACE it with:
+// window.evaluateCouponNudges();
+
+window.applyCoupon = function (code) {
+    const coupon = availableCoupons.find(c => c.code === code);
+    if (!coupon) { alert("Invalid Promo Code!"); return; }
+
+    // 🌟 BUG FIX: Naya coupon process karne se pehle, purana coupon aur uske free items cart se hata do
+    window.removeCoupon(false);
+
+    let eligibleTotal = 0;
+    cart.forEach(item => { if (!item.isPromoGift && !item.isFreeGift) eligibleTotal += (parseFloat(item.sellingPrice) * item.quantity); });
+
+    if (eligibleTotal < coupon.minOrder) {
+        alert(`This coupon requires a minimum order of ₹${coupon.minOrder}`);
+        return;
+    }
+
+    if (coupon.type === 'FLAT' || coupon.type === 'PERCENT') {
+        let discount = 0;
+        if (coupon.type === 'FLAT') discount = coupon.details.discountValue;
+        else if (coupon.type === 'PERCENT') {
+            discount = (eligibleTotal * coupon.details.discountPercent) / 100;
+            if (discount > coupon.details.maxDiscount) discount = coupon.details.maxDiscount;
+        }
+        if (discount > eligibleTotal) discount = eligibleTotal;
+
+        checkoutState.couponCode = coupon.code;
+        checkoutState.couponDiscount = discount;
+        renderCheckoutPage();
+        checkoutState.couponCode = coupon.code;
+        checkoutState.couponDiscount = discount;
+        renderCheckoutPage();
+
+        // NAYA VISUAL EFFECT
+        window.showCelebration("WOOHOO! 🥳", `You just saved ₹${Math.round(discount)} on this order!`);
+    }
+    else if (coupon.type === 'FREE_GIFT') {
+        window.addPromoItemToCart(coupon.details.productId, 0, coupon.code);
+    }
+    else if (coupon.type === 'FREE_CHOICE' || coupon.type === 'DISCOUNTED_CHOICE') {
+        window.openPromoChoiceModal(coupon);
+    }
+}
+
+window.openPromoChoiceModal = function (coupon) {
+    document.getElementById('activePromoCodeSelected').value = coupon.code;
+    document.getElementById('activePromoCodeType').value = coupon.type;
+    const list = document.getElementById('promoChoiceList');
+    list.innerHTML = '';
+
+    document.getElementById('promoChoiceTitle').innerText = coupon.type === 'FREE_CHOICE' ? '🎁 Select Your Free Gift' : '🔥 Select Discounted Item';
+
+    let itemsToRender = coupon.type === 'FREE_CHOICE' ? coupon.details.productIds : coupon.details.discountedItems;
+
+    itemsToRender.forEach((item, index) => {
+        let productId = coupon.type === 'FREE_CHOICE' ? item : item.productId;
+        let specialPrice = coupon.type === 'FREE_CHOICE' ? 0 : item.offerPrice;
+        let productData = allProducts.find(p => p.id === productId);
+
+        if (productData) {
+            let isChecked = index === 0 ? 'checked' : '';
+            list.innerHTML += `
+                <label style="display:flex; align-items:center; background:#fff; padding:12px; border-radius:8px; border:1px solid ${isChecked ? '#128c7e' : '#ddd'}; cursor:pointer; gap:10px;">
+                    <input type="radio" name="promoChoiceRadio" value="${productId}" data-price="${specialPrice}" style="accent-color:#128c7e; width:18px; height:18px;" ${isChecked}>
+                    <img src="${productData.img}" style="width:40px; height:40px; border-radius:6px; object-fit:cover;">
+                    <div style="flex:1;">
+                        <div style="font-size:14px; font-weight:bold; color:#111;">${productData.name}</div>
+                        <div style="font-size:13px; color:#128c7e; font-weight:bold;">${specialPrice === 0 ? 'FREE' : 'Special Price: ₹' + specialPrice} <strike style="color:#999; font-size:11px; font-weight:normal;">₹${productData.sellingPrice}</strike></div>
+                    </div>
+                </label>
+            `;
+        }
+    });
+
+    document.getElementById('promo-choice-overlay').classList.add('active');
+}
+
+window.confirmPromoChoice = function () {
+    const selectedRadio = document.querySelector('input[name="promoChoiceRadio"]:checked');
+    if (!selectedRadio) { alert("Please select an item!"); return; }
+
+    const productId = selectedRadio.value;
+    const specialPrice = Number(selectedRadio.getAttribute('data-price'));
+    const code = document.getElementById('activePromoCodeSelected').value;
+
+    closePromoChoiceModal();
+    window.addPromoItemToCart(productId, specialPrice, code);
+}
+
+window.addPromoItemToCart = function (productId, specialPrice, promoCode) {
+    // Agar pehle se koi code laga hai, usko hatai
+    window.removeCoupon(false);
+
+    const product = allProducts.find(p => p.id === productId);
+    if (product) {
+        cart.push({
+            ...product,
+            id: product.id + "_PROMO",
+            originalId: product.id,
+            quantity: 1,
+            sellingPrice: specialPrice,
+            isPromoGift: true,
+            appliedPromoCode: promoCode,
+            name: `🎁 [PROMO] ${product.name}`
+        });
+
+        checkoutState.couponCode = promoCode;
+        checkoutState.couponDiscount = 0; // Kyunki discount item ke rate me adjustment karke diya hai
+        renderCheckoutPage();
+        updateCartUI(false);
+        checkoutState.couponCode = promoCode;
+        checkoutState.couponDiscount = 0;
+        renderCheckoutPage();
+        updateCartUI(false);
+
+        // NAYA VISUAL EFFECT
+        let subtitleText = specialPrice === 0 ? "You got a FREE ITEM added to your cart! 🎁" : "You unlocked a Special Discounted Item! 🔥";
+        window.showCelebration("AWESOME! 🎉", subtitleText);
+    }
+}
+
+window.removeCoupon = function (renderUI = true) {
+    checkoutState.couponCode = '';
+    checkoutState.couponDiscount = 0;
+    // Cart me se saare isPromoGift wale items uda do
+    cart = cart.filter(item => !item.isPromoGift);
+    if (renderUI) {
+        renderCheckoutPage();
+        updateCartUI(false);
+    }
+}
+
+// 🛒 Order Finalize Function
 window.finalizeOrder = async function () {
     if (cart.length === 0) return;
 
-    const btn = document.querySelector('.checkout-bar .btn-checkout');
+    const btn = document.querySelector('.checkout-modal .btn-checkout') || document.querySelector('.btn-full');
     btn.innerText = "Processing..."; btn.disabled = true;
 
     try {
@@ -660,32 +916,35 @@ window.finalizeOrder = async function () {
             orderDate: new Date().toISOString()
         };
 
-        await addDoc(collection(db, "orders"), orderData);
+        // 1. Order database me save hua
+        const newOrderRef = await addDoc(collection(db, "orders"), orderData);
+        const shortOrderId = "ORD" + newOrderRef.id.substring(0, 6).toUpperCase();
 
-        let message = `Hello! New Order Received 🛍️\n\n`;
-        message += `*Customer:* +91 ${loggedInUser}\n`;
+        // 🌟 2. NAYA: STOCK DEDUCTION LOGIC
+        for (let item of cart) {
+            if (item.isFreeGift) continue;
+            try {
+                const pRef = doc(db, "products", item.id);
+                const pSnap = await getDoc(pRef);
+                if (pSnap.exists()) {
+                    let currentStock = pSnap.data().stockQty;
+                    if (currentStock !== undefined) {
+                        let newStock = currentStock - item.quantity;
+                        if (newStock < 0) newStock = 0;
+                        await updateDoc(pRef, { stockQty: newStock });
+                    }
+                }
+            } catch (e) { console.error("Stock update failed", e); }
+        }
 
-        let addrStr = typeof selectedAddress === 'object' ?
-            `${selectedAddress.fullName}, ${selectedAddress.building}, ${selectedAddress.area}, ${selectedAddress.city} - ${selectedAddress.pincode} (${selectedAddress.type})`
-            : selectedAddress;
-
-        message += `*Address:* ${addrStr}\n`;
-        message += `*Payment:* ${checkoutState.paymentMethod}\n\n*Order Details:*\n`;
-
-        cart.forEach(item => {
-            message += `▪️ ${item.name}\n   Qty: ${item.quantity} x ₹${item.sellingPrice} = ₹${parseFloat(item.sellingPrice) * item.quantity}\n\n`;
-        });
-
-        if (checkoutState.couponDiscount > 0) message += `*Coupon Discount:* -₹${checkoutState.couponDiscount}\n`;
-        message += `*Final Amount:* ₹${finalGrandTotal}`;
-
+        // 3. Cart khali karein aur modal band karein
         cart = [];
         updateCartUI();
         closeCheckoutPage();
         checkoutState = { selectedAddressIndex: 0, paymentMethod: 'COD', couponCode: '', couponDiscount: 0 };
 
-        const myWhatsAppNumber = "919876543210"; // <--- YAHAN APNA NUMBER DAALEIN
-        window.open(`https://wa.me/${myWhatsAppNumber}?text=${encodeURIComponent(message)}`, '_blank');
+        document.getElementById('success-order-id').innerText = shortOrderId;
+        document.getElementById('order-success-modal').style.display = 'flex';
 
         btn.innerText = "Proceed to pay"; btn.disabled = false;
 
@@ -695,6 +954,15 @@ window.finalizeOrder = async function () {
     }
 }
 
+window.closeSuccessModal = function () {
+    document.getElementById('order-success-modal').style.display = 'none';
+}
+
+window.closeSuccessAndOpenProfile = function () {
+    document.getElementById('order-success-modal').style.display = 'none';
+    openProfile();
+    setTimeout(() => { renderMyOrders(); }, 300);
+}
 
 // ==========================================
 // 👤 5. PROFILE SECTION LOGIC
@@ -763,9 +1031,7 @@ window.renderProfileHome = function () {
     `;
 }
 
-// --- 📦 ORDER HISTORY (WITH LIVE SYNC & CANCEL FEATURE) ---
-
-let unsubscribeOrders = null; // Live sync ko track karne ke liye
+let unsubscribeOrders = null;
 
 window.renderMyOrders = function () {
     currentProfileScreen = 'orders';
@@ -776,12 +1042,10 @@ window.renderMyOrders = function () {
     try {
         const q = query(collection(db, "orders"), where("customerMobile", "==", loggedInUser));
 
-        // Agar pehle se koi listener chal raha hai, toh usko band karein (memory bachaane ke liye)
         if (unsubscribeOrders) {
             unsubscribeOrders();
         }
 
-        // 🌟 NAYA: 'onSnapshot' lagaya gaya hai real-time live sync ke liye
         unsubscribeOrders = onSnapshot(q, (querySnapshot) => {
             if (querySnapshot.empty) {
                 if (currentProfileScreen === 'orders') {
@@ -823,7 +1087,6 @@ window.renderMyOrders = function () {
                     });
                 }
 
-                // 🌟 NAYA: Order Cancel button logic (Sirf New ya Processing state mein dikhega)
                 let cancelBtnHtml = '';
                 if (order.status === 'New' || order.status === 'Processing') {
                     cancelBtnHtml = `
@@ -864,7 +1127,6 @@ window.renderMyOrders = function () {
                 `;
             });
 
-            // UI sirf tabhi update karein jab customer "Orders" screen par ho
             if (currentProfileScreen === 'orders') {
                 container.innerHTML = html;
             }
@@ -874,14 +1136,12 @@ window.renderMyOrders = function () {
     }
 }
 
-// 🌟 NAYA FUNCTION: Order Cancel Karne ke liye
 window.cancelOrder = async function (orderId) {
     if (confirm("Are you sure you want to cancel this order?")) {
         try {
             await updateDoc(doc(db, "orders", orderId), {
                 status: "Cancelled"
             });
-            // onSnapshot laga hua hai, isliye status automatically update ho jayega bina refresh kiye
             alert("Order cancelled successfully!");
         } catch (error) {
             alert("Error cancelling order: " + error.message);
@@ -889,7 +1149,6 @@ window.cancelOrder = async function (orderId) {
     }
 }
 
-// Inline details accordion
 window.toggleOrderDetails = function (orderId, element) {
     const detailsDiv = document.getElementById(`details-${orderId}`);
     if (detailsDiv.style.display === 'none') {
@@ -901,7 +1160,6 @@ window.toggleOrderDetails = function (orderId, element) {
     }
 }
 
-// Wapas cart me bhej kar reorder karna
 window.reorderItems = function (orderId) {
     const order = currentCustomerOrders.find(o => o.id === orderId);
     if (order && order.items) {
@@ -957,8 +1215,8 @@ window.renderMyAddresses = async function () {
                         <div class="addr-full">${displayFull}</div>
                         <div class="addr-mobile">Mobile No: ${loggedInUser}</div>
                         <div class="addr-actions">
-                            <span style="color:#128c7e; margin-right: 20px; cursor:pointer;" onclick="editAddress(${idx}, 'profile')">✏️ Edit</span>
-                            <span style="color:#dc3545; cursor:pointer;" onclick="deleteAddress(${idx})">🗑️ Delete</span>
+                            <span style="color:#128c7e; margin-right: 20px; cursor:pointer;" onclick="window.editAddress(${idx}, 'profile')">✏️ Edit</span>
+                            <span style="color:#dc3545; cursor:pointer;" onclick="window.deleteAddress(${idx})">🗑️ Delete</span>
                         </div>
                     </div>
                 `;
@@ -972,7 +1230,6 @@ window.renderMyAddresses = async function () {
         container.innerHTML = '<p style="text-align:center; color:red;">Failed to load addresses.</p>';
     }
 }
-
 
 // ==========================================
 // 🌐 6. GLOBAL SMART ADDRESS MODAL
@@ -992,7 +1249,9 @@ function injectGlobalAddressModal() {
                 <div class="address-form-body">
                     <input type="hidden" id="editAddressIdx" value="">
                     <input type="text" id="addrFullName" class="addr-input" placeholder="Full Name *" required>
-                    <input type="email" id="addrEmail" class="addr-input" placeholder="Email Address *">
+                    <input type="tel" id="addrMobile" class="addr-input" placeholder="Mobile Number (For Delivery) *" required>
+                    
+                    <input type="email" id="addrEmail" class="addr-input" placeholder="Email Address (Optional)">
                     <input type="text" id="addrBuilding" class="addr-input" placeholder="Office / Building Name *" required>
                     <input type="text" id="addrArea" class="addr-input" placeholder="Area / Street / Sector / Village *" required>
                     <input type="text" id="addrState" class="addr-input" placeholder="State *" required>
@@ -1024,6 +1283,7 @@ window.openNewAddressModal = function (source = 'profile') {
     document.getElementById('addrSubmitBtn').innerText = source === 'checkout' ? "Save & Proceed to Checkout" : "Save Address";
 
     document.getElementById('addrFullName').value = "";
+    document.getElementById('addrMobile').value = loggedInUser || "";
     document.getElementById('addrEmail').value = "";
     document.getElementById('addrBuilding').value = "";
     document.getElementById('addrArea').value = "";
@@ -1052,6 +1312,7 @@ window.editAddress = function (index, source = 'profile') {
     document.getElementById('addrSubmitBtn').innerText = source === 'checkout' ? "Update & Proceed" : "Update Address";
 
     document.getElementById('addrFullName').value = addr.fullName || '';
+    document.getElementById('addrMobile').value = addr.mobile || loggedInUser || '';
     document.getElementById('addrEmail').value = addr.email || '';
     document.getElementById('addrBuilding').value = addr.building || '';
     document.getElementById('addrArea').value = addr.area || '';
@@ -1082,6 +1343,7 @@ window.selectAddrType = function (type, element) {
 
 window.saveNewAddress = async function () {
     const fullName = document.getElementById('addrFullName').value.trim();
+    const mobile = document.getElementById('addrMobile').value.trim();
     const email = document.getElementById('addrEmail').value.trim();
     const building = document.getElementById('addrBuilding').value.trim();
     const area = document.getElementById('addrArea').value.trim();
@@ -1091,7 +1353,7 @@ window.saveNewAddress = async function () {
     const type = document.getElementById('addrTypeSelected').value;
     const editIdx = document.getElementById('editAddressIdx').value;
 
-    if (!fullName || !building || !area || !state || !city || !pincode) {
+    if (!fullName || !mobile || !building || !area || !state || !city || !pincode) {
         alert("Please fill all required (*) fields");
         return;
     }
@@ -1099,7 +1361,7 @@ window.saveNewAddress = async function () {
     const btn = document.getElementById('addrSubmitBtn');
     btn.innerText = "Saving..."; btn.disabled = true;
 
-    const newAddressObj = { fullName, email, building, area, state, city, pincode, type };
+    const newAddressObj = { fullName, mobile, email, building, area, state, city, pincode, type };
     const docRef = doc(db, "customers", loggedInUser);
 
     try {
@@ -1132,7 +1394,224 @@ window.saveNewAddress = async function () {
     }
 }
 
+let toastTimeout;
+window.showToast = function (msg, isSuccess) {
+    const toast = document.getElementById('toast-notification');
+    if (!toast) return;
+    toast.innerHTML = msg;
+
+    toast.style.backgroundColor = isSuccess ? '#10b981' : '#f59e0b';
+    toast.style.display = 'block';
+    toast.style.opacity = '1';
+
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => { toast.style.display = 'none'; }, 300);
+    }, 3000);
+}
+
+// 🔍 SEARCH LOGIC
+window.handleSearch = function () {
+    let query = document.getElementById('searchInput').value.toLowerCase().trim();
+    if (query === '') {
+        renderCategoryNav();
+        renderCatalog(); // Wapas normal screen
+        return;
+    }
+
+    let filtered = allProducts.filter(p =>
+        p.name.toLowerCase().includes(query) ||
+        p.mainCategory.toLowerCase().includes(query) ||
+        (p.subCategory && p.subCategory.toLowerCase().includes(query))
+    );
+
+    document.getElementById('category-nav').innerHTML = '';
+    document.getElementById('sub-category-nav').classList.add('hidden');
+
+    mainContainer.innerHTML = `<div class="category-section"><div class="category-header"><h3>Search Results</h3></div></div>`;
+    let section = mainContainer.querySelector('.category-section');
+
+    if (filtered.length === 0) {
+        section.innerHTML += `<p style="text-align:center; color:#777; padding: 30px;">No items found for "${query}" 😥</p>`;
+    } else {
+        filtered.forEach(p => section.appendChild(window.createProductItem(p)));
+    }
+}
+
+// ==========================================
+// 🛍️ PRODUCT DETAILS PAGE (PDP) LOGIC
+// ==========================================
+
+window.openPDP = function (productId) {
+    const product = allProducts.find(p => p.id === productId);
+    if (!product) return;
+
+    document.getElementById('pdp-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    let mrp = parseFloat(product.mrp);
+    let sp = parseFloat(product.sellingPrice);
+    let savePercent = Math.round(((mrp - sp) / mrp) * 100);
+
+    let weight = product.weight || "Standard Pack";
+    let benefits = product.benefits || "• Premium Quality\n• 100% Authentic & Pure\n• Freshly packed";
+    let benefitsHtml = benefits.split('\n').map(b => `<li style="margin-left: 15px; color:#555; font-size:14px; margin-bottom:5px;">${b}</li>`).join('');
+
+    let related = allProducts.filter(p => p.mainCategory === product.mainCategory && p.id !== product.id).slice(0, 4);
+    let relatedHtml = '';
+    related.forEach(rp => {
+        relatedHtml += `
+            <div style="min-width: 130px; max-width: 130px; background: #fff; border-radius: 8px; padding: 10px; border: 1px solid #eee; cursor: pointer;" onclick="window.openPDP('${rp.id}')">
+                <img src="${rp.img}" style="width: 100%; height: 110px; object-fit: cover; border-radius: 6px;">
+                <div style="font-size: 13px; font-weight: bold; margin-top: 8px; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rp.name}</div>
+                <div style="font-size: 14px; font-weight: 800; color: #128c7e; margin-top: 4px;">₹${rp.sellingPrice}</div>
+            </div>
+        `;
+    });
+
+    const container = document.getElementById('pdp-content-container');
+    container.innerHTML = `
+        <div style="background: #fff; width: 100%; overflow-x: auto; scroll-snap-type: x mandatory; display: flex; scrollbar-width: none;">
+            <div style="min-width: 100%; scroll-snap-align: center; display: flex; justify-content: center; align-items: center; background: #f9f9f9; overflow: hidden; position: relative;">
+                <img src="${product.img}" style="width: 100%; height: 350px; object-fit: contain; cursor: zoom-in; transition: transform 0.3s ease;" 
+                     onclick="this.style.transform = this.style.transform === 'scale(1.8)' ? 'scale(1)' : 'scale(1.8)'; this.style.cursor = this.style.transform === 'scale(1.8)' ? 'zoom-out' : 'zoom-in';">
+            </div>
+        </div>
+        <div style="background: #fff; padding: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee;">
+            <h1 style="font-size: 20px; color: #111; margin-bottom: 8px; font-weight: 800;">${product.name}</h1>
+            <div style="color: #666; font-size: 14px; margin-bottom: 15px;">Net Weight: <strong style="color: #333;">${weight}</strong></div>
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+                <span style="font-size: 28px; font-weight: 800; color: #111;">₹${product.sellingPrice}</span>
+                <span style="font-size: 16px; color: #999; text-decoration: line-through;">₹${product.mrp}</span>
+                <span style="background: #e6f4ea; color: #166534; padding: 4px 10px; border-radius: 4px; font-size: 13px; font-weight: bold; margin-left: auto;">Save ${savePercent}%</span>
+            </div>
+            ${product.stockQty <= 10 && product.stockQty > 0 ? `<p style="color: #dc3545; font-size: 12px; font-weight: bold; margin-top: 10px;">⏳ Hurry! Only ${product.stockQty} left in stock</p>` : ''}
+        </div>
+        <div style="background: #fff; padding: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee;">
+            <h3 style="font-size: 16px; margin-bottom: 15px; color: #111; display: flex; align-items: center; gap: 8px;">✨ Why Buy This?</h3>
+            <ul style="padding: 0; list-style-type: none;">${benefitsHtml}</ul>
+        </div>
+        <div style="background: #fff; padding: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee;">
+            <h3 style="font-size: 16px; margin-bottom: 10px; color: #111;">📝 Product Description</h3>
+            <p style="font-size: 14px; color: #555; line-height: 1.6;">${product.desc}</p>
+        </div>
+        ${related.length > 0 ? `
+        <div style="background: #fff; padding: 20px;">
+            <h3 style="font-size: 16px; margin-bottom: 15px; color: #111;">🛒 You might also like</h3>
+            <div style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none;">
+                ${relatedHtml}
+            </div>
+        </div>
+        ` : ''}
+    `;
+
+    if (product.stockQty !== undefined && product.stockQty <= 0) {
+        document.getElementById('pdp-add-btn').innerText = "Out of Stock";
+        document.getElementById('pdp-add-btn').style.opacity = "0.5";
+        document.getElementById('pdp-buy-btn').style.display = "none";
+    } else {
+        document.getElementById('pdp-add-btn').innerText = "Add to Cart";
+        document.getElementById('pdp-add-btn').style.opacity = "1";
+        document.getElementById('pdp-buy-btn').style.display = "block";
+        document.getElementById('pdp-add-btn').onclick = () => { window.addToCart(product.id); window.showToast('Item added to cart! 🛒', true); };
+        document.getElementById('pdp-buy-btn').onclick = () => { window.addToCart(product.id); closePDP(); openLoginModal('checkout'); };
+    }
+}
+
+window.closePDP = function () {
+    document.getElementById('pdp-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+
+// ==========================================
+// 🎁 GLOBAL PROMO CHOICE MODAL (INJECTED VIA JS)
+// ==========================================
+function injectPromoChoiceModal() {
+    if (document.getElementById('promo-choice-overlay')) return;
+    const modalHtml = `
+        <div id="promo-choice-overlay" class="login-overlay" style="z-index: 4000;">
+            <div class="login-box" style="background:#f4f6f8;">
+                <div class="login-header">
+                    <h3 id="promoChoiceTitle">Select Your Reward</h3>
+                    <span class="close-login" onclick="closePromoChoiceModal()">&times;</span>
+                </div>
+                <p style="color: #666; font-size: 13px; margin-bottom: 15px;" id="promoChoiceSubtitle">Choose 1 item from the list below:</p>
+                
+                <div id="promoChoiceList" style="max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                    </div>
+                
+                <input type="hidden" id="activePromoCodeSelected">
+                <input type="hidden" id="activePromoCodeType">
+                <button type="button" class="btn-checkout btn-full" onclick="confirmPromoChoice()">Claim Reward</button>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+injectPromoChoiceModal();
+
+window.closePromoChoiceModal = function () {
+    document.getElementById('promo-choice-overlay').classList.remove('active');
+}
+
+// ==========================================
+// 🎉 CELEBRATION VISUAL EFFECT
+// ==========================================
+window.showCelebration = function (title, subtitle) {
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100dvh';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+    overlay.style.zIndex = '9999';
+    overlay.style.display = 'flex';
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
+    overlay.style.opacity = '0';
+    overlay.style.transition = 'opacity 0.3s ease';
+
+    const box = document.createElement('div');
+    box.style.backgroundColor = '#fff';
+    box.style.padding = '30px 20px';
+    box.style.borderRadius = '16px';
+    box.style.textAlign = 'center';
+    box.style.width = '80%';
+    box.style.maxWidth = '320px';
+    box.style.transform = 'scale(0.5)';
+    box.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+    box.style.boxShadow = '0 10px 30px rgba(0,0,0,0.2)';
+
+    box.innerHTML = `
+        <div style="font-size: 55px; margin-bottom: 10px; animation: bounce 1s infinite alternate;">🎊</div>
+        <h2 style="color: #128c7e; margin-bottom: 8px; font-size: 22px; font-weight: 900; text-transform: uppercase;">${title}</h2>
+        <p style="color: #555; font-size: 15px; font-weight: bold;">${subtitle}</p>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    // Animate In
+    setTimeout(() => {
+        overlay.style.opacity = '1';
+        box.style.transform = 'scale(1)';
+    }, 50);
+
+    // Auto Remove After 2.5 seconds
+    setTimeout(() => {
+        overlay.style.opacity = '0';
+        box.style.transform = 'scale(0.5)';
+        setTimeout(() => {
+            if (document.body.contains(overlay)) document.body.removeChild(overlay);
+        }, 300);
+    }, 2500);
+}
+
 // ==========================================
 // 🚀 INITIALIZE APP
 // ==========================================
 listenProducts();
+listenCoupons();
