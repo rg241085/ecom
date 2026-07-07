@@ -80,6 +80,7 @@
             padding: 15px 20px;
             display: flex;
             justify-content: flex-end;
+            align-items: center;
             border-bottom: 1px solid #e0e0e0;
             font-weight: 500;
         }
@@ -90,12 +91,10 @@
 
         .view-section {
             display: none;
-            /* Default hide all views */
         }
 
         .view-section.active-view {
             display: block;
-            /* Show only active view */
         }
 
         .page-header {
@@ -181,7 +180,6 @@
             transform: scale(1.1);
         }
 
-        /* Status Badge colors */
         .status-select {
             padding: 6px 10px;
             border-radius: 6px;
@@ -257,13 +255,6 @@
             background: #fafafa;
         }
 
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            border-color: #128c7e;
-            background: #fff;
-        }
-
         .hidden-input {
             display: none;
             margin-top: 10px;
@@ -311,7 +302,7 @@
             line-height: 1.4;
         }
 
-        /* --- 🌟 NAYA: Order Tabs & Empty State Styles --- */
+        /* --- Order Tabs & Empty State Styles --- */
         .order-tabs {
             display: flex;
             background: #f9f9f9;
@@ -342,7 +333,6 @@
             background: #fff;
             color: #222;
             border-top: 2px solid #5cb85c;
-            /* Green color match from your image */
             font-weight: bold;
         }
 
@@ -355,7 +345,7 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
         }
 
-        /* --- 👥 CUSTOMERS PREMIUM VIEW STYLES --- */
+        /* --- Customers Detail View Styles --- */
         .filter-card {
             background: #fff;
             padding: 20px;
@@ -395,7 +385,6 @@
             margin-right: 10px;
         }
 
-        /* Customer Detail View */
         .cust-detail-layout {
             display: flex;
             gap: 20px;
@@ -471,204 +460,386 @@
 </head>
 
 <body>
+    <div id="admin-login-screen"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f4f6f8; z-index: 10000; display: flex; align-items: center; justify-content: center;">
+        <div
+            style="background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center;">
+            <h2 style="margin-bottom: 5px; color: #111;">Admin Portal</h2>
+            <p style="color: #666; font-size: 14px; margin-bottom: 25px;">Please login to access the dashboard</p>
 
-    <aside class="sidebar">
-        <div class="logo">MyStore<span style="font-size:12px; color:#999;">.admin</span></div>
-        <ul class="menu">
-            <li data-target="orders-view">📦 Live Orders</li>
-            <li data-target="products-view" class="active">👕 Manage Products</li>
-            <li data-target="customers-view">👥 Customers Database</li>
-        </ul>
-    </aside>
+            <input type="email" id="adminEmail" placeholder="Admin Email"
+                style="width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box;">
+            <input type="password" id="adminPassword" placeholder="Password"
+                style="width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box;">
 
-    <main class="main-content">
-        <div class="topbar"><span>⚙️ Store Admin | Control Panel</span></div>
-        <div class="content-area">
+            <button id="adminLoginBtn" onclick="loginAdmin()"
+                style="width: 100%; padding: 12px; background: #128c7e; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px;">Login</button>
+        </div>
+    </div>
 
-            <!-- 📦 LIVE ORDERS VIEW -->
-            <div id="orders-view" class="view-section">
-                <div class="page-header">
-                    <h2>Orders</h2>
-                    <button class="btn-add">+ Create New</button>
-                </div>
+    <div id="admin-dashboard-content" style="display: none; width: 100%; height: 100%; display: flex;">
+        <aside class="sidebar">
+            <div class="logo">MyStore<span style="font-size:12px; color:#999;">.admin</span></div>
+            <ul class="menu">
+                <li data-target="dashboard-view" class="active">📊 Dashboard</li>
+                <li data-target="orders-view">📦 Live Orders</li>
+                <li data-target="products-view">👕 Manage Products</li>
+                <li data-target="customers-view">👥 Customers Database</li>
+                <li data-target="offers-view">🎟️ Offers & Coupons</li>
+            </ul>
+        </aside>
 
-                <!-- 🌟 NAYA: Tab Navigation -->
-                <div class="order-tabs">
-                    <button class="order-tab active" data-filter="All">All Orders</button>
-                    <button class="order-tab" data-filter="New">Pending</button>
-                    <button class="order-tab" data-filter="Processing">In Progress</button>
-                    <button class="order-tab" data-filter="Delivered">Completed</button>
-                    <button class="order-tab" data-filter="Cancelled">Cancelled</button>
-                </div>
-
-                <!-- Orders Table -->
-                <div class="table-container" id="ordersTableContainer">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Order Date</th>
-                                <th>Customer Mobile</th>
-                                <th>Items Ordered</th>
-                                <th>Total Amount</th>
-                                <th>Order Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ordersTableBody">
-                            <tr>
-                                <td colspan="6" style="text-align:center;">Loading live orders...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- 🌟 NAYA: Empty State (Jab koi order na ho) -->
-                <div id="ordersEmptyState" class="empty-state" style="display: none;">
-                    <div style="font-size: 50px; margin-bottom: 15px;">🛒</div>
-                    <p style="color:#555;">You have not received any orders yet. Once your customers<br>place their
-                        orders on your online store, they will appear here.</p>
-                    <button class="btn-add" style="margin-top: 20px;">+ Create New</button>
-                </div>
+        <main class="main-content">
+            <div class="topbar">
+                <span>⚙️ Store Admin | Control Panel</span>
+                <button onclick="logoutAdmin()"
+                    style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; margin-left: 15px;">Logout</button>
             </div>
+            <div class="content-area">
 
-            <div id="products-view" class="view-section active-view">
-                <div class="page-header">
-                    <h2>Products Inventory</h2>
-                    <button class="btn-add" id="openModalBtn">+ Add Product</button>
-                </div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Image</th>
-                                <th>Name</th>
-                                <th>Main Category</th>
-                                <th>Sub Category</th>
-                                <th>Selling Price</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody">
-                            <tr>
-                                <td colspan="6" style="text-align:center;">Loading products inventory...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="customers-view" class="view-section">
-
-                <div id="customer-list-container">
+                <!-- 📊 DASHBOARD VIEW -->
+                <div id="dashboard-view" class="view-section active-view">
                     <div class="page-header">
-                        <h2>Customers</h2>
+                        <h2>Store Analytics Dashboard</h2>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card green" style="padding:30px;">
+                            <div style="font-size:30px;">💰</div>
+                            <div class="stat-info"><span>Total Revenue</span>
+                                <h3 id="dashRevenue" style="font-size:24px;">₹0</h3>
+                            </div>
+                        </div>
+                        <div class="stat-card blue" style="padding:30px;">
+                            <div style="font-size:30px;">📦</div>
+                            <div class="stat-info"><span>Total Orders Delivered</span>
+                                <h3 id="dashOrders" style="font-size:24px;">0</h3>
+                            </div>
+                        </div>
+                        <div class="stat-card gray" style="padding:30px;">
+                            <div style="font-size:30px;">👥</div>
+                            <div class="stat-info"><span>Total Registered Users</span>
+                                <h3 id="dashCustomers" style="font-size:24px;">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="orders-view" class="view-section">
+                    <div class="page-header">
+                        <h2>Orders</h2>
+                        <button class="btn-add">+ Create New</button>
                     </div>
 
-                    <div class="filter-card">
-                        <div class="filter-group">
-                            <label>Enter Client's ID / Mobile</label>
-                            <input type="text" id="searchCustomerInput" placeholder="Search by Mobile No..."
-                                onkeyup="filterCustomers()">
-                        </div>
-                        <div class="filter-group">
-                            <label>Joined On</label>
-                            <input type="date">
-                        </div>
+                    <div class="order-tabs">
+                        <button class="order-tab active" data-filter="All">All Orders</button>
+                        <button class="order-tab" data-filter="New">Pending</button>
+                        <button class="order-tab" data-filter="Processing">In Progress</button>
+                        <button class="order-tab" data-filter="Delivered">Completed</button>
+                        <button class="order-tab" data-filter="Cancelled">Cancelled</button>
                     </div>
 
+                    <div class="table-container" id="ordersTableContainer">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Order Date</th>
+                                    <th>Customer Details</th>
+                                    <th>Items Ordered</th>
+                                    <th>Total Amount</th>
+                                    <th>Order Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTableBody">
+                                <tr>
+                                    <td colspan="6" style="text-align:center;">Loading live orders...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="ordersEmptyState" class="empty-state" style="display: none;">
+                        <div style="font-size: 50px; margin-bottom: 15px;">🛒</div>
+                        <p style="color:#555;">You have not received any orders yet.</p>
+                        <button class="btn-add" style="margin-top: 20px;">+ Create New</button>
+                    </div>
+                </div>
+
+                <div id="products-view" class="view-section">
+                    <div class="page-header">
+                        <h2>Products Inventory</h2>
+                        <button class="btn-add" id="openModalBtn">+ Add Product</button>
+                    </div>
                     <div class="table-container">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Customer Info</th>
-                                    <th>Contact</th>
-                                    <th>Join Date / Last Active</th>
-                                    <th>Status</th>
+                                    <th>Image</th>
+                                    <th>Name</th>
+                                    <th>Main Category</th>
+                                    <th>Sub Category</th>
+                                    <th>Selling Price</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="customersTableBody">
+                            <tbody id="tableBody">
                                 <tr>
-                                    <td colspan="5" style="text-align:center;">Loading customer profiles...</td>
+                                    <td colspan="6" style="text-align:center;">Loading products inventory...</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <div id="customer-detail-container" style="display: none;">
-                    <div class="page-header">
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <button class="btn-cancel" onclick="backToCustomerList()" style="padding: 8px 15px;">←
-                                Back</button>
-                            <h2>Customer Details</h2>
+                <div id="customers-view" class="view-section">
+                    <div id="customer-list-container">
+                        <div class="page-header">
+                            <h2>Customers</h2>
+                        </div>
+                        <div class="filter-card">
+                            <div class="filter-group">
+                                <label>Enter Client's ID / Mobile</label>
+                                <input type="text" id="searchCustomerInput" placeholder="Search by Mobile No..."
+                                    onkeyup="filterCustomers()">
+                            </div>
+                            <div class="filter-group">
+                                <label>Joined On</label>
+                                <input type="date">
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Customer Info</th>
+                                        <th>Contact</th>
+                                        <th>Join Date / Last Active</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="customersTableBody">
+                                    <tr>
+                                        <td colspan="5" style="text-align:center;">Loading customer profiles...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
-                    <div class="cust-detail-layout">
-                        <div class="cust-main">
-                            <div class="stats-grid">
-                                <div class="stat-card blue">
-                                    <div style="font-size: 24px;">🧾</div>
-                                    <div class="stat-info">
-                                        <span>Total Orders</span>
-                                        <h3 id="detTotalOrders">0</h3>
-                                    </div>
-                                </div>
-                                <div class="stat-card green">
-                                    <div style="font-size: 24px;">💰</div>
-                                    <div class="stat-info">
-                                        <span>Purchase worth</span>
-                                        <h3 id="detPurchaseWorth">₹0.00</h3>
-                                    </div>
-                                </div>
-                                <div class="stat-card red">
-                                    <div style="font-size: 24px;">📅</div>
-                                    <div class="stat-info">
-                                        <span>Joined / Active On</span>
-                                        <h3 id="detJoinedOn">-</h3>
-                                    </div>
-                                </div>
-                                <div class="stat-card gray">
-                                    <div style="font-size: 24px;">🛍️</div>
-                                    <div class="stat-info">
-                                        <span>Last Purchase</span>
-                                        <h3 id="detLastPurchase">-</h3>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <h3 style="margin-bottom: 15px; color: #333;">Purchase History</h3>
-                            <div class="table-container">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Order ID</th>
-                                            <th>Date</th>
-                                            <th>Items</th>
-                                            <th>Amount</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="detPurchaseHistoryBody">
-                                    </tbody>
-                                </table>
+                    <div id="customer-detail-container" style="display: none;">
+                        <div class="page-header">
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <button class="btn-cancel" onclick="backToCustomerList()" style="padding: 8px 15px;">←
+                                    Back</button>
+                                <h2>Customer Details</h2>
                             </div>
                         </div>
-
-                        <div class="cust-sidebar">
-                            <div class="big-avatar"></div>
-                            <h3 id="detSidebarName" style="margin-bottom: 10px;">Customer</h3>
-                            <p id="detSidebarPhone" style="color: #666; font-size: 15px; font-weight: bold;">+91
-                                ----------</p>
+                        <div class="cust-detail-layout">
+                            <div class="cust-main">
+                                <div class="stats-grid">
+                                    <div class="stat-card blue">
+                                        <div style="font-size: 24px;">🧾</div>
+                                        <div class="stat-info">
+                                            <span>Total Orders</span>
+                                            <h3 id="detTotalOrders">0</h3>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card green">
+                                        <div style="font-size: 24px;">💰</div>
+                                        <div class="stat-info">
+                                            <span>Purchase worth</span>
+                                            <h3 id="detPurchaseWorth">₹0.00</h3>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card red">
+                                        <div style="font-size: 24px;">📅</div>
+                                        <div class="stat-info">
+                                            <span>Joined / Active On</span>
+                                            <h3 id="detJoinedOn">-</h3>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card gray">
+                                        <div style="font-size: 24px;">🛍️</div>
+                                        <div class="stat-info">
+                                            <span>Last Purchase</span>
+                                            <h3 id="detLastPurchase">-</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <h3 style="margin-bottom: 15px; color: #333;">Purchase History</h3>
+                                <div class="table-container">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Order ID</th>
+                                                <th>Date</th>
+                                                <th>Items</th>
+                                                <th>Amount</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="detPurchaseHistoryBody">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="cust-sidebar">
+                                <div class="big-avatar"></div>
+                                <h3 id="detSidebarName" style="margin-bottom: 10px;">Customer</h3>
+                                <p id="detSidebarPhone" style="color: #666; font-size: 15px; font-weight: bold;">+91
+                                    ----------</p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-            </div>
-        </div>
-    </main>
+                <!-- 🎟️ OFFERS & COUPONS VIEW -->
+                <div id="offers-view" class="view-section">
+                    <div class="page-header">
+                        <h2>Offers & Promo Codes</h2>
+                        <button class="btn-add" id="openCouponModalBtn">+ Create Promo Code</button>
+                    </div>
 
+                    <h3 style="margin-bottom: 15px; color: #333;">🎟️ Active Promo Codes</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Promo Code</th>
+                                    <th>Offer Details</th>
+                                    <th>Min. Order (₹)</th>
+                                    <th>Valid Till</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="couponsTableBody">
+                                <tr>
+                                    <td colspan="6" style="text-align:center;">Loading promo codes...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 🎟️ ADD NEW PROMO CODE MODAL -->
+                <div class="modal" id="couponModal">
+                    <div class="modal-content" style="width: 750px; max-width: 95%;">
+                        <span class="close-btn" id="closeCouponModalBtn">&times;</span>
+                        <h3 id="couponModalTitle">Create New Promo Code</h3>
+
+                        <form id="addCouponForm">
+                            <input type="hidden" id="editCouponId" value="">
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Promo Code (e.g. FESTIVAL50)</label>
+                                    <input type="text" id="couponCodeInput" placeholder="Enter code in capital letters"
+                                        required style="text-transform: uppercase;">
+                                </div>
+                                <div class="form-group">
+                                    <label>Minimum Order Value (₹)</label>
+                                    <input type="number" id="couponMinOrderInput" placeholder="e.g. 500" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 20px;">
+                                <label>Cart Motivation Message (Nudge)</label>
+                                <input type="text" id="couponNudgeMsg"
+                                    placeholder="e.g. Add ₹{amount} more to unlock a Free Gift!">
+                                <p style="font-size: 11px; color: #666; margin-top: 5px;">*Use <b>{amount}</b> jahan aap
+                                    remaining balance dikhana chahte hain.*</p>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Start Date</label>
+                                    <input type="date" id="couponStartDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Expiry Date</label>
+                                    <input type="date" id="couponExpiryDate" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 20px;">
+                                <label>Discount Type</label>
+                                <select id="couponTypeSelect" required style="font-weight: bold; color: #128c7e;">
+                                    <option value="FLAT">a. Flat Discount (Fixed ₹)</option>
+                                    <option value="PERCENT">b. Percentage Discount (%)</option>
+                                    <option value="FREE_GIFT">c. Free Gift (Specific Item)</option>
+                                    <option value="FREE_CHOICE">d. Select Any Item (Customer chooses 1 for free)
+                                    </option>
+                                    <option value="DISCOUNTED_CHOICE">e. Discounted Item (Customer chooses 1 at special
+                                        price)</option>
+                                </select>
+                            </div>
+
+                            <!-- Dynamic Sections Box -->
+                            <div id="dynamic-coupon-fields"
+                                style="background: #f4f7f6; padding: 20px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px;">
+
+                                <!-- a. FLAT -->
+                                <div id="type-flat" class="coupon-type-section">
+                                    <div class="form-group">
+                                        <label>Flat Discount Value (₹)</label>
+                                        <input type="number" id="flatValueInput" placeholder="e.g. 100">
+                                    </div>
+                                </div>
+
+                                <!-- b. PERCENT -->
+                                <div id="type-percent" class="coupon-type-section" style="display:none;">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Discount Percentage (%)</label>
+                                            <input type="number" id="percentValueInput" placeholder="e.g. 20">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Maximum Discount Limit (₹)</label>
+                                            <input type="number" id="percentMaxLimitInput" placeholder="e.g. 200">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- c. FREE GIFT -->
+                                <div id="type-free-gift" class="coupon-type-section" style="display:none;">
+                                    <div class="form-group">
+                                        <label>Select Free Gift Item</label>
+                                        <select id="freeGiftSelect"></select>
+                                    </div>
+                                </div>
+
+                                <!-- d. FREE CHOICE -->
+                                <div id="type-free-choice" class="coupon-type-section" style="display:none;">
+                                    <label>Select Items for Customer to Choose From (Free)</label>
+                                    <div id="freeChoiceList"
+                                        style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background: #fff; border-radius: 6px;">
+                                        <!-- Checkboxes JS se aayenge -->
+                                    </div>
+                                </div>
+
+                                <!-- e. DISCOUNTED CHOICE -->
+                                <div id="type-discounted-choice" class="coupon-type-section" style="display:none;">
+                                    <label>Select Items & Set Special Discounted Price (₹)</label>
+                                    <div id="discountedChoiceList"
+                                        style="max-height: 250px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background: #fff; border-radius: 6px;">
+                                        <!-- Checkboxes & Price Inputs JS se aayenge -->
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" class="btn-cancel" id="cancelCouponBtn">Cancel</button>
+                                <button type="submit" class="btn-submit" id="submitCouponBtn">Save Promo Code</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
     <div class="modal" id="productModal">
         <div class="modal-content">
             <span class="close-btn" id="closeModalBtn">&times;</span>
@@ -712,6 +883,32 @@
                     </div>
                 </div>
 
+                <!-- 📦 STOCK AUR LIMIT KA OPTION -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Total Stock Quantity</label>
+                        <input type="number" id="stockQty" placeholder="e.g. 100" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Max Limit per Customer</label>
+                        <input type="number" id="maxLimit" placeholder="0 = No limit, ya 5, 10 daalein" required
+                            value="0">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Net Weight / Size (e.g. 500g, 1kg, Standard)</label>
+                        <input type="text" id="weight" placeholder="e.g. 500g" required>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>Product Benefits (Har line mein ek naya fayda likhein)</label>
+                    <textarea id="benefits" rows="3" placeholder="• Premium Quality\n• 100% Pure\n• Freshly Packed"
+                        required></textarea>
+                </div>
+
                 <div class="form-group" style="margin-bottom: 20px;">
                     <label>Product Description</label>
                     <textarea id="desc" rows="2" placeholder="Best quality product..." required></textarea>
@@ -721,16 +918,147 @@
                     <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
                     <button type="submit" class="btn-submit" id="submitBtn">Save Product</button>
                 </div>
-
                 <p id="message">✅ Saved Successfully!</p>
             </form>
         </div>
     </div>
 
+    <!-- 🎟️ ADD NEW PROMO CODE MODAL -->
+    <div class="modal" id="couponModal">
+        <div class="modal-content" style="width: 600px;">
+            <span class="close-btn" id="closeCouponModalBtn">&times;</span>
+            <h3 id="couponModalTitle">Create New Promo Code</h3>
+
+            <form id="addCouponForm">
+                <input type="hidden" id="editCouponId" value="">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Promo Code (e.g. DIWALI50)</label>
+                        <input type="text" id="couponCodeInput" placeholder="Enter code in capital letters" required
+                            style="text-transform: uppercase;">
+                    </div>
+                    <div class="form-group">
+                        <label>Discount Type</label>
+                        <select id="couponTypeSelect" required>
+                            <option value="FLAT">Flat Discount (Fixed ₹)</option>
+                            <option value="PERCENT">Percentage Discount (%)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Discount Value (₹ or %)</label>
+                        <input type="number" id="couponValueInput" placeholder="e.g. 50" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Minimum Order Value (₹)</label>
+                        <input type="number" id="couponMinOrderInput" placeholder="e.g. 500" required>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" id="cancelCouponBtn">Cancel</button>
+                    <button type="submit" class="btn-submit" id="submitCouponBtn">Save Coupon</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 📄 DETAILED ORDER VIEW & INVOICE MODAL -->
+    <div class="modal" id="orderDetailModal">
+        <div class="modal-content" style="width: 850px; max-width: 95%;">
+            <span class="close-btn" onclick="closeOrderModal()">&times;</span>
+
+            <!-- Print Area Start -->
+            <div id="invoice-print-area">
+                <div
+                    style="display:flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #128c7e; padding-bottom: 15px; margin-bottom: 20px;">
+                    <div>
+                        <h2 style="color: #128c7e; margin-bottom: 5px; font-size: 28px;">MyStore</h2>
+                        <p style="color: #555; font-size: 14px; font-weight: bold;">Order Invoice / Receipt</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <h3 id="invOrderId" style="color: #111; font-size: 20px;">ORD-XXXXXX</h3>
+                        <p id="invOrderDate" style="color: #555; font-size: 13px; margin-top: 5px;">Date: --/--/----</p>
+                        <span id="invOrderStatus"
+                            style="display:inline-block; margin-top:8px; padding: 4px 10px; background: #eee; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: uppercase;">Status</span>
+                    </div>
+                </div>
+
+                <div
+                    style="display: flex; gap: 30px; margin-bottom: 25px; background: #f9f9f9; padding: 15px; border-radius: 8px;">
+                    <div style="flex: 1;">
+                        <h4 style="margin-bottom: 8px; color: #555; font-size: 12px; text-transform: uppercase;">
+                            Customer Details</h4>
+                        <p id="invCustName"
+                            style="font-weight: bold; color: #111; font-size: 15px; margin-bottom: 4px;">Name</p>
+                        <p id="invCustPhone" style="color: #444; font-size: 14px;">+91 ----------</p>
+                    </div>
+                    <div style="flex: 1.5;">
+                        <h4 style="margin-bottom: 8px; color: #555; font-size: 12px; text-transform: uppercase;">
+                            Delivery Address</h4>
+                        <p id="invAddress" style="color: #222; font-size: 14px; line-height: 1.5; font-weight: 500;">
+                            Address goes here</p>
+                    </div>
+                    <div style="flex: 1;">
+                        <h4 style="margin-bottom: 8px; color: #555; font-size: 12px; text-transform: uppercase;">Payment
+                            Method</h4>
+                        <p id="invPayment" style="font-weight: bold; color: #128c7e; font-size: 16px;">COD</p>
+                    </div>
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                    <thead>
+                        <tr style="background-color: #f0f4f8; border-bottom: 2px solid #ddd;">
+                            <th style="padding: 12px; text-align: left; font-size: 13px; color: #444;">Product Item</th>
+                            <th style="padding: 12px; text-align: center; font-size: 13px; color: #444;">Price</th>
+                            <th style="padding: 12px; text-align: center; font-size: 13px; color: #444;">Qty</th>
+                            <th style="padding: 12px; text-align: right; font-size: 13px; color: #444;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invItemsBody">
+                        <!-- Items javascript se aayenge -->
+                    </tbody>
+                </table>
+
+                <div style="display: flex; justify-content: flex-end;">
+                    <div
+                        style="width: 320px; border: 1px solid #eee; padding: 15px; border-radius: 8px; background: #fff;">
+                        <div
+                            style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; color: #555;">
+                            <span>Subtotal:</span>
+                            <span id="invSubtotal" style="font-weight: bold; color: #111;">₹0</span>
+                        </div>
+                        <div
+                            style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; color: #10b981; font-weight: bold;">
+                            <span>Coupon (<span id="invCouponCode">None</span>):</span>
+                            <span id="invDiscount">-₹0</span>
+                        </div>
+                        <div
+                            style="display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 2px dashed #ccc; font-size: 18px; font-weight: 900; color: #111;">
+                            <span>Grand Total:</span>
+                            <span id="invTotal">₹0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Print Area End -->
+
+            <div class="form-actions" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+                <button class="btn-cancel" onclick="closeOrderModal()">Close</button>
+                <button class="btn-submit" onclick="printInvoice()" style="background: #2563eb;"><span
+                        style="margin-right: 8px; font-size: 16px;">🖨️</span> Print Invoice</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        // getDocs ke sath onSnapshot, deleteDoc aur updateDoc use kiya hai live updates ke liye
-        import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, onSnapshot, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDkW8QBHruMzQztReP3XmGU5sz8MwSlYEU",
@@ -745,12 +1073,60 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
 
-        let allProductsData = [];
-        let existingMainCats = new Set();
-        let categoryMap = {};
+        // ==========================================
+        // 🔐 ADMIN LOGIN LOGIC
+        // ==========================================
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('admin-login-screen').style.display = 'none';
+                document.getElementById('admin-dashboard-content').style.display = 'flex';
 
-        // --- 📊 TAB SWITCHING LOGIC ---
+                fetchProducts();
+                listenLiveOrders();
+                listenCustomersDatabase();
+                listenCoupons();
+                loadGiftSettings();
+            } else {
+                document.getElementById('admin-login-screen').style.display = 'flex';
+                document.getElementById('admin-dashboard-content').style.display = 'none';
+            }
+        });
+
+        window.loginAdmin = function () {
+            const email = document.getElementById('adminEmail').value;
+            const password = document.getElementById('adminPassword').value;
+            const btn = document.getElementById('adminLoginBtn');
+
+            if (!email || !password) {
+                alert("Please enter email and password");
+                return;
+            }
+            btn.innerText = "Logging in...";
+            btn.disabled = true;
+
+            signInWithEmailAndPassword(auth, email, password)
+                .then(() => {
+                    btn.innerText = "Login";
+                    btn.disabled = false;
+                })
+                .catch(() => {
+                    alert("Login Failed: Incorrect Email or Password");
+                    btn.innerText = "Login";
+                    btn.disabled = false;
+                });
+        }
+
+        window.logoutAdmin = function () {
+            if (confirm("Are you sure you want to logout?")) {
+                signOut(auth).then(() => alert("Logged out successfully"));
+            }
+        }
+
+        // ==========================================
+        // 📊 TAB SWITCHING LOGIC
+        // ==========================================
         const menuItems = document.querySelectorAll('.menu li');
         const viewSections = document.querySelectorAll('.view-section');
 
@@ -760,12 +1136,17 @@
                 viewSections.forEach(v => v.classList.remove('active-view'));
 
                 this.classList.add('active');
-                const targetView = this.getAttribute('data-target');
-                document.getElementById(targetView).classList.add('active-view');
+                document.getElementById(this.getAttribute('data-target')).classList.add('active-view');
             });
         });
 
-        // --- 👕 1. PRODUCTS MANAGEMENT LOGIC ---
+        // ==========================================
+        // 👕 PRODUCTS MANAGEMENT LOGIC
+        // ==========================================
+        let allProductsData = [];
+        let existingMainCats = new Set();
+        let categoryMap = {};
+
         async function fetchProducts() {
             const tableBody = document.getElementById('tableBody');
             try {
@@ -781,19 +1162,15 @@
                     return;
                 }
 
-                querySnapshot.forEach((doc) => {
-                    let p = doc.data();
-                    p.id = doc.id;
+                querySnapshot.forEach((docSnap) => {
+                    let p = docSnap.data();
+                    p.id = docSnap.id;
                     allProductsData.push(p);
 
                     if (p.mainCategory) {
                         existingMainCats.add(p.mainCategory);
-                        if (!categoryMap[p.mainCategory]) {
-                            categoryMap[p.mainCategory] = new Set();
-                        }
-                        if (p.subCategory) {
-                            categoryMap[p.mainCategory].add(p.subCategory);
-                        }
+                        if (!categoryMap[p.mainCategory]) categoryMap[p.mainCategory] = new Set();
+                        if (p.subCategory) categoryMap[p.mainCategory].add(p.subCategory);
                     }
 
                     tableBody.innerHTML += `
@@ -804,7 +1181,7 @@
                             <td>${p.subCategory || '-'}</td>
                             <td>₹${p.sellingPrice}</td>
                             <td>
-                                <button class="action-btn" onclick="window.copyProduct('${p.id}')" title="Copy/Duplicate">📋</button>
+                                <button class="action-btn" onclick="window.copyProduct('${p.id}')" title="Copy">📋</button>
                                 <button class="action-btn edit-btn" onclick="window.editProduct('${p.id}')" title="Edit">✏️</button>
                                 <button class="action-btn delete-btn" onclick="window.deleteProduct('${p.id}')" title="Delete">🗑️</button>
                             </td>
@@ -812,11 +1189,11 @@
                     `;
                 });
                 updateMainDropdown();
+                window.populateGiftDropdown();
             } catch (error) {
                 console.error(error);
             }
         }
-
         function updateMainDropdown() {
             const mainCatSelect = document.getElementById('mainCatSelect');
             mainCatSelect.innerHTML = '<option value="" disabled selected>Select Category</option>';
@@ -828,29 +1205,21 @@
         function updateSubDropdown(selectedMainCat) {
             const subCatSelect = document.getElementById('subCatSelect');
             subCatSelect.innerHTML = '<option value="" disabled selected>Select Sub-category</option>';
-
             if (selectedMainCat && categoryMap[selectedMainCat]) {
-                categoryMap[selectedMainCat].forEach(sub => {
-                    subCatSelect.innerHTML += `<option value="${sub}">${sub}</option>`;
-                });
+                categoryMap[selectedMainCat].forEach(sub => subCatSelect.innerHTML += `<option value="${sub}">${sub}</option>`);
             }
             subCatSelect.innerHTML += '<option value="NEW_ADD">+ Add New Sub-category</option>';
         }
 
         document.getElementById('mainCatSelect').addEventListener('change', function () {
-            const isNewMain = (this.value === 'NEW_ADD');
-            document.getElementById('newMainCatInput').style.display = isNewMain ? 'block' : 'none';
-            if (isNewMain) {
-                document.getElementById('newMainCatInput').focus();
-                updateSubDropdown();
-            } else {
-                updateSubDropdown(this.value);
-            }
+            const isNew = this.value === 'NEW_ADD';
+            document.getElementById('newMainCatInput').style.display = isNew ? 'block' : 'none';
+            if (isNew) { document.getElementById('newMainCatInput').focus(); updateSubDropdown(); }
+            else { updateSubDropdown(this.value); }
         });
 
         document.getElementById('subCatSelect').addEventListener('change', function () {
-            document.getElementById('newSubCatInput').style.display = (this.value === 'NEW_ADD') ? 'block' : 'none';
-            if (this.value === 'NEW_ADD') document.getElementById('newSubCatInput').focus();
+            document.getElementById('newSubCatInput').style.display = this.value === 'NEW_ADD' ? 'block' : 'none';
         });
 
         const modal = document.getElementById('productModal');
@@ -867,25 +1236,6 @@
         document.getElementById('closeModalBtn').addEventListener('click', () => modal.style.display = 'none');
         document.getElementById('cancelBtn').addEventListener('click', () => modal.style.display = 'none');
 
-        window.copyProduct = function (productId) {
-            const p = allProductsData.find(item => item.id === productId);
-            if (p) {
-                document.getElementById('editProductId').value = "";
-                document.getElementById('modalTitle').innerText = "Copy & Add New Product";
-                document.getElementById('mainCatSelect').value = p.mainCategory;
-                updateSubDropdown(p.mainCategory);
-                document.getElementById('subCatSelect').value = p.subCategory;
-                document.getElementById('name').value = p.name;
-                document.getElementById('desc').value = p.desc;
-                document.getElementById('mrp').value = p.mrp;
-                document.getElementById('sellingPrice').value = p.sellingPrice;
-                document.getElementById('img').value = p.img;
-                document.getElementById('newMainCatInput').style.display = 'none';
-                document.getElementById('newSubCatInput').style.display = 'none';
-                modal.style.display = 'flex';
-            }
-        };
-
         window.editProduct = function (productId) {
             const p = allProductsData.find(item => item.id === productId);
             if (p) {
@@ -895,24 +1245,47 @@
                 updateSubDropdown(p.mainCategory);
                 document.getElementById('subCatSelect').value = p.subCategory;
                 document.getElementById('name').value = p.name;
+                document.getElementById('weight').value = p.weight || '';
+                document.getElementById('benefits').value = p.benefits || '';
                 document.getElementById('desc').value = p.desc;
                 document.getElementById('mrp').value = p.mrp;
                 document.getElementById('sellingPrice').value = p.sellingPrice;
                 document.getElementById('img').value = p.img;
-                document.getElementById('newMainCatInput').style.display = 'none';
-                document.getElementById('newSubCatInput').style.display = 'none';
+
+                document.getElementById('stockQty').value = p.stockQty !== undefined ? p.stockQty : 100;
+                document.getElementById('maxLimit').value = p.maxPerOrder !== undefined ? p.maxPerOrder : 0;
+
+                modal.style.display = 'flex';
+            }
+        };
+
+        window.copyProduct = function (productId) {
+            const p = allProductsData.find(item => item.id === productId);
+            if (p) {
+                document.getElementById('editProductId').value = "";
+                document.getElementById('modalTitle').innerText = "Copy Product";
+                document.getElementById('mainCatSelect').value = p.mainCategory;
+                updateSubDropdown(p.mainCategory);
+                document.getElementById('subCatSelect').value = p.subCategory;
+                document.getElementById('name').value = p.name;
+                document.getElementById('weight').value = p.weight || '';
+                document.getElementById('benefits').value = p.benefits || '';
+                document.getElementById('desc').value = p.desc;
+                document.getElementById('mrp').value = p.mrp;
+                document.getElementById('sellingPrice').value = p.sellingPrice;
+                document.getElementById('img').value = p.img;
+
+                document.getElementById('stockQty').value = p.stockQty !== undefined ? p.stockQty : 100;
+                document.getElementById('maxLimit').value = p.maxPerOrder !== undefined ? p.maxPerOrder : 0;
+
                 modal.style.display = 'flex';
             }
         };
 
         window.deleteProduct = async function (productId) {
-            if (confirm("Are you sure you want to delete this product?")) {
-                try {
-                    await deleteDoc(doc(db, "products", productId));
-                    fetchProducts();
-                } catch (error) {
-                    alert("Delete error: " + error.message);
-                }
+            if (confirm("Delete this product?")) {
+                await deleteDoc(doc(db, "products", productId));
+                fetchProducts();
             }
         };
 
@@ -932,298 +1305,519 @@
                 mrp: document.getElementById('mrp').value,
                 sellingPrice: document.getElementById('sellingPrice').value,
                 img: document.getElementById('img').value,
+                stockQty: Number(document.getElementById('stockQty').value),
+                maxPerOrder: Number(document.getElementById('maxLimit').value),
+
+                // 🌟 NAYE FIELDS ADD KIYE
+                weight: document.getElementById('weight').value,
+                benefits: document.getElementById('benefits').value,
+
                 timestamp: new Date()
             };
 
             const editId = document.getElementById('editProductId').value;
+            if (editId) { await updateDoc(doc(db, "products", editId), productData); }
+            else { await addDoc(collection(db, "products"), productData); }
 
-            try {
-                if (editId) {
-                    await updateDoc(doc(db, "products", editId), productData);
-                } else {
-                    await addDoc(collection(db, "products"), productData);
-                }
-                document.getElementById('message').style.display = "block";
-                fetchProducts();
-                setTimeout(() => {
-                    document.getElementById('message').style.display = "none";
-                    modal.style.display = 'none';
-                    submitBtn.innerText = "Save Product"; submitBtn.disabled = false;
-                }, 1000);
-            } catch (error) {
-                alert("Error: " + error.message);
+            document.getElementById('message').style.display = "block";
+            fetchProducts();
+            setTimeout(() => {
+                document.getElementById('message').style.display = "none";
+                modal.style.display = 'none';
                 submitBtn.innerText = "Save Product"; submitBtn.disabled = false;
-            }
+            }, 1000);
         });
 
 
-        // --- 📦 2. LIVE ORDERS VIEW LOGIC (Real-time tracking) ---
-        // --- 📦 2. LIVE ORDERS VIEW LOGIC (With Tabs Filter) ---
-        let allLiveOrders = []; // Global array filter karne ke liye
-        let currentOrderFilter = 'All'; // Default filter
+        // ==========================================
+        // 🎟️ OFFERS & COUPONS LOGIC (NEW UNIFIED SYSTEM)
+        // ==========================================
+
+        const couponModal = document.getElementById('couponModal');
+        let allCoupons = [];
+
+        // Helper: Convert YYYY-MM-DD to DD-MM-YYYY
+        function formatDateToDDMMYYYY(dateString) {
+            if (!dateString) return '-';
+            const parts = dateString.split('-');
+            if (parts.length === 3) {
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+            return dateString;
+        }
+
+        // 1. Populate Dropdowns & Lists from Catalog
+        window.populateCouponDropdowns = function () {
+            const freeGiftSelect = document.getElementById('freeGiftSelect');
+            const freeChoiceList = document.getElementById('freeChoiceList');
+            const discountedChoiceList = document.getElementById('discountedChoiceList');
+
+            freeGiftSelect.innerHTML = '<option value="" disabled selected>Select Free Gift Product</option>';
+            freeChoiceList.innerHTML = '';
+            discountedChoiceList.innerHTML = '';
+
+            allProductsData.forEach(p => {
+                // Dropdown for Type C
+                freeGiftSelect.innerHTML += `<option value="${p.id}">${p.name} (MRP: ₹${p.mrp})</option>`;
+
+                // List for Type D (Checkbox)
+                freeChoiceList.innerHTML += `
+            <label style="display: block; margin-bottom: 8px; cursor: pointer; padding: 5px; border-bottom: 1px solid #f1f1f1;">
+                <input type="checkbox" class="fc-check" value="${p.id}" style="margin-right: 8px;">
+                ${p.name} (Price: ₹${p.sellingPrice})
+            </label>
+        `;
+
+                // List for Type E (Checkbox + Price Input)
+                discountedChoiceList.innerHTML += `
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 5px; border-bottom: 1px solid #f1f1f1;">
+                <label style="cursor: pointer; flex: 1;">
+                    <input type="checkbox" class="dc-check" value="${p.id}" onchange="document.getElementById('dc-price-${p.id}').disabled = !this.checked;" style="margin-right: 8px;">
+                    ${p.name} <span style="color:#777; font-size:12px;">(₹${p.sellingPrice})</span>
+                </label>
+                <input type="number" id="dc-price-${p.id}" placeholder="Special Price ₹" disabled style="width: 120px; padding: 6px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+        `;
+            });
+        }
+
+        // Ensure this runs when products are fetched
+        const originalFetchProducts = window.fetchProducts;
+        window.fetchProducts = async function () {
+            await originalFetchProducts();
+            if (allProductsData.length > 0) window.populateCouponDropdowns();
+        };
+
+        // 2. Open / Close Modal Logic
+        document.getElementById('openCouponModalBtn').addEventListener('click', () => {
+            document.getElementById('addCouponForm').reset();
+            document.getElementById('couponModalTitle').innerText = "Create New Promo Code";
+            // Default show flat discount
+            document.querySelectorAll('.coupon-type-section').forEach(el => el.style.display = 'none');
+            document.getElementById('type-flat').style.display = 'block';
+
+            // Reset selections
+            if (allProductsData.length > 0) window.populateCouponDropdowns();
+            couponModal.style.display = 'flex';
+        });
+
+        document.getElementById('closeCouponModalBtn').addEventListener('click', () => couponModal.style.display = 'none');
+        document.getElementById('cancelCouponBtn').addEventListener('click', () => couponModal.style.display = 'none');
+
+        // 3. Handle Dropdown Change to show correct input fields
+        document.getElementById('couponTypeSelect').addEventListener('change', function () {
+            document.querySelectorAll('.coupon-type-section').forEach(el => el.style.display = 'none');
+
+            if (this.value === 'FLAT') document.getElementById('type-flat').style.display = 'block';
+            if (this.value === 'PERCENT') document.getElementById('type-percent').style.display = 'block';
+            if (this.value === 'FREE_GIFT') document.getElementById('type-free-gift').style.display = 'block';
+            if (this.value === 'FREE_CHOICE') document.getElementById('type-free-choice').style.display = 'block';
+            if (this.value === 'DISCOUNTED_CHOICE') document.getElementById('type-discounted-choice').style.display = 'block';
+        });
+
+        // 4. Save Coupon Logic
+        document.getElementById('addCouponForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitCouponBtn');
+            btn.innerText = "Saving..."; btn.disabled = true;
+
+            const code = document.getElementById('couponCodeInput').value.toUpperCase().trim();
+            const minOrder = document.getElementById('couponMinOrderInput').value;
+            const nudgeMsg = document.getElementById('couponNudgeMsg').value;
+            const startDate = document.getElementById('couponStartDate').value;
+            const expiryDate = document.getElementById('couponExpiryDate').value;
+            const type = document.getElementById('couponTypeSelect').value;
+
+            let details = {};
+
+            // Validate inputs based on type
+            if (type === 'FLAT') {
+                details.discountValue = Number(document.getElementById('flatValueInput').value);
+                if (!details.discountValue) { alert("Please enter flat discount value"); btn.disabled = false; return; }
+            } else if (type === 'PERCENT') {
+                details.discountPercent = Number(document.getElementById('percentValueInput').value);
+                details.maxDiscount = Number(document.getElementById('percentMaxLimitInput').value);
+                if (!details.discountPercent || !details.maxDiscount) { alert("Please enter percentage and max limit"); btn.disabled = false; return; }
+            } else if (type === 'FREE_GIFT') {
+                details.productId = document.getElementById('freeGiftSelect').value;
+                if (!details.productId) { alert("Please select a free gift"); btn.disabled = false; return; }
+            } else if (type === 'FREE_CHOICE') {
+                let selected = [];
+                document.querySelectorAll('.fc-check:checked').forEach(chk => selected.push(chk.value));
+                if (selected.length === 0) { alert("Please select at least 1 item for free choice"); btn.disabled = false; return; }
+                details.productIds = selected;
+            } else if (type === 'DISCOUNTED_CHOICE') {
+                let selected = [];
+                let priceError = false;
+                document.querySelectorAll('.dc-check:checked').forEach(chk => {
+                    let price = document.getElementById('dc-price-' + chk.value).value;
+                    if (price === "") priceError = true;
+                    selected.push({ productId: chk.value, offerPrice: Number(price) });
+                });
+                if (selected.length === 0 || priceError) { alert("Select at least 1 item and ensure special prices are entered"); btn.disabled = false; return; }
+                details.discountedItems = selected;
+            }
+
+            try {
+                await addDoc(collection(db, "coupons"), {
+                    code: code,
+                    minOrder: Number(minOrder),
+                    nudgeMsg: nudgeMsg,
+                    startDate: startDate,
+                    expiryDate: expiryDate,
+                    type: type,
+                    details: details,
+                    isActive: true,
+                    createdAt: new Date().toISOString()
+                });
+                couponModal.style.display = 'none';
+                alert("Promo Code created successfully!");
+            } catch (e) { alert("Error: " + e.message); }
+
+            btn.innerText = "Save Promo Code"; btn.disabled = false;
+        });
+
+        // 5. Listen and Render Coupons Table
+        function listenCoupons() {
+            onSnapshot(collection(db, "coupons"), (snapshot) => {
+                const tbody = document.getElementById('couponsTableBody');
+                tbody.innerHTML = '';
+                allCoupons = [];
+
+                if (snapshot.empty) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No promo codes found. Create one!</td></tr>';
+                    return;
+                }
+
+                snapshot.forEach(docSnap => {
+                    const c = docSnap.data();
+                    c.id = docSnap.id;
+                    allCoupons.push(c);
+
+                    let offerText = '';
+                    // 🌟 SAFE CHECK ADDED: Ye purane aur naye dono coupons ko handle karega
+                    if (c.type === 'FLAT') offerText = `₹${c.details ? c.details.discountValue : c.value} OFF`;
+                    else if (c.type === 'PERCENT') offerText = `${c.details ? c.details.discountPercent : c.value}% OFF`;
+                    else if (c.type === 'FREE_GIFT') offerText = `🎁 Free Gift Included`;
+                    else if (c.type === 'FREE_CHOICE') offerText = `🎁 Free Choice (1 item)`;
+                    else if (c.type === 'DISCOUNTED_CHOICE') offerText = `🔥 Special Discounted Item`;
+
+                    let displayExpiry = c.expiryDate ? formatDateToDDMMYYYY(c.expiryDate) : 'No Expiry';
+
+                    // Check if expired (Ignore for old ones without expiry date)
+                    let isExpired = c.expiryDate ? new Date(c.expiryDate) < new Date(new Date().setHours(0, 0, 0, 0)) : false;
+                    let statusHtml = isExpired
+                        ? `<span style="color:#dc3545; font-weight:bold; font-size:12px;">EXPIRED</span>`
+                        : `<span style="color:#28a745; font-weight:bold; font-size:12px;">ACTIVE</span>`;
+
+                    tbody.innerHTML += `
+                <tr>
+                    <td><strong style="color:#128c7e; font-size:16px;">${c.code}</strong></td>
+                    <td><span style="font-size:13px;">${offerText}</span></td>
+                    <td>₹${c.minOrder}</td>
+                    <td>${displayExpiry}</td>
+                    <td>${statusHtml}</td>
+                    <td>
+                        <button class="action-btn delete-btn" onclick="window.deleteCoupon('${c.id}')" title="Delete">🗑️</button>
+                    </td>
+                </tr>
+            `;
+                });
+            });
+        }
+
+        window.deleteCoupon = async function (id) {
+            if (confirm("Are you sure you want to delete this promo code?")) {
+                await deleteDoc(doc(db, "coupons", id));
+            }
+        }
+        // ==========================================
+        // 📦 LIVE ORDERS LOGIC
+        // ==========================================
+        let allLiveOrders = [];
+        let currentOrderFilter = 'All';
 
         function listenLiveOrders() {
             onSnapshot(collection(db, "orders"), (querySnapshot) => {
                 allLiveOrders = [];
+                let totalRev = 0;
+                let deliveredCount = 0;
 
-                querySnapshot.forEach((docSnap) => {
-                    allLiveOrders.push({ id: docSnap.id, ...docSnap.data() });
+                querySnapshot.forEach(docSnap => {
+                    let o = { id: docSnap.id, ...docSnap.data() };
+                    allLiveOrders.push(o);
+                    if (o.status === 'Delivered') {
+                        totalRev += parseFloat(o.totalAmount || 0);
+                        deliveredCount++;
+                    }
                 });
-
-                // Naye orders upar dikhane ke liye sort karein
                 allLiveOrders.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
+                if (document.getElementById('ordersTableContainer')) window.renderOrdersTable();
 
-                renderOrdersTable(); // Table ko render karo
+                if (document.getElementById('dashRevenue')) {
+                    document.getElementById('dashRevenue').innerText = `₹${totalRev.toFixed(2)}`;
+                    document.getElementById('dashOrders').innerText = deliveredCount;
+                }
             });
         }
 
-        // 🌟 NAYA: Table render aur filter karne ka function
         window.renderOrdersTable = function () {
             const tbody = document.getElementById('ordersTableBody');
             const tableContainer = document.getElementById('ordersTableContainer');
             const emptyState = document.getElementById('ordersEmptyState');
 
-            // Agar filter 'All' nahi hai, toh specific status wale filter karo
-            let filteredOrders = allLiveOrders;
-            if (currentOrderFilter !== 'All') {
-                filteredOrders = allLiveOrders.filter(o => o.status === currentOrderFilter);
-            }
+            let filteredOrders = currentOrderFilter === 'All' ? allLiveOrders : allLiveOrders.filter(o => o.status === currentOrderFilter);
 
-            // Agar koi order nahi hai us tab mein, toh Empty State dikhao
             if (filteredOrders.length === 0) {
                 tableContainer.style.display = 'none';
                 emptyState.style.display = 'block';
                 return;
             }
 
-            // Agar order hain toh Table dikhao
             tableContainer.style.display = 'block';
             emptyState.style.display = 'none';
             tbody.innerHTML = '';
 
-            filteredOrders.forEach((order) => {
+            filteredOrders.forEach(order => {
                 let itemsHtml = '<div class="items-list">';
-                if (order.items && order.items.length > 0) {
-                    order.items.forEach(item => {
-                        itemsHtml += `• ${item.name} <strong>(x${item.quantity})</strong><br>`;
-                    });
-                }
+                if (order.items) order.items.forEach(item => itemsHtml += `• ${item.name} <strong>(x${item.quantity})</strong><br>`);
                 itemsHtml += '</div>';
 
                 let orderDate = order.orderDate ? new Date(order.orderDate).toLocaleString() : '-';
 
+                let selectColor = order.status === 'New' ? '#ffeeba' : order.status === 'Processing' ? '#17a2b8' : order.status === 'Delivered' ? '#28a745' : '#dc3545';
+                let textColor = order.status === 'New' ? '#000' : '#fff';
+
+                // 👉 NAYA LOGIC: Customer ka naam nikalna order data se
+                let custName = "Customer"; // Default name
+                if (order.deliveryAddress && typeof order.deliveryAddress === 'object' && order.deliveryAddress.fullName) {
+                    custName = order.deliveryAddress.fullName;
+                }
+
                 tbody.innerHTML += `
                     <tr>
                         <td><small>${orderDate}</small></td>
-                        <td><strong>+91 ${order.customerMobile}</strong></td>
+                        <td>
+                            <strong style="color: #111; font-size: 14px; text-transform: capitalize;">${custName}</strong><br>
+                            <span style="color: #666; font-size: 13px;">+91 ${order.customerMobile}</span>
+                        </td>
                         <td>${itemsHtml}</td>
                         <td><strong>₹${order.totalAmount}</strong></td>
                         <td>
-                            <select class="status-select" onchange="window.updateOrderStatus('${order.id}', this.value)" style="background-color: ${getStatusColor(order.status)}; color: ${order.status === 'New' ? '#000' : '#fff'};">
+                            <select class="status-select" onchange="window.updateOrderStatus('${order.id}', this.value)" style="background-color: ${selectColor}; color: ${textColor};">
                                 <option value="New" ${order.status === 'New' ? 'selected' : ''}>New 🆕</option>
                                 <option value="Processing" ${order.status === 'Processing' ? 'selected' : ''}>Processing ⏳</option>
                                 <option value="Delivered" ${order.status === 'Delivered' ? 'selected' : ''}>Delivered ✅</option>
                                 <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>Cancelled ❌</option>
                             </select>
                         </td>
-                        <td>
-                            <button class="action-btn delete-btn" onclick="window.deleteOrder('${order.id}')" title="Delete Permanent">🗑️</button>
+                        <td style="white-space: nowrap;">
+                            <button class="action-btn" style="color: #2563eb; font-size: 22px;" onclick="window.viewOrderDetails('${order.id}')" title="View & Print Invoice">👁️</button>
+                            <button class="action-btn delete-btn" onclick="window.deleteOrder('${order.id}')" title="Delete Order">🗑️</button>
                         </td>
-                    </tr>
-                `;
+                    </tr>`;
             });
         }
-
-        // 🌟 NAYA: Tab click handle karne ka event listener
         document.querySelectorAll('.order-tab').forEach(tab => {
             tab.addEventListener('click', function () {
-                // Remove active class from all tabs
                 document.querySelectorAll('.order-tab').forEach(t => t.classList.remove('active'));
-
-                // Add active class to clicked tab
                 this.classList.add('active');
-
-                // Filter set karo aur table update karo
                 currentOrderFilter = this.getAttribute('data-filter');
                 renderOrdersTable();
             });
         });
 
-        // Status colors generator helper
-        function getStatusColor(status) {
-            if (status === 'New') return '#ffeeba'; // Yellow
-            if (status === 'Processing') return '#17a2b8'; // Blue
-            if (status === 'Delivered') return '#28a745'; // Green
-            if (status === 'Cancelled') return '#dc3545'; // Red
-            return '#fff';
-        }
-
-        // Change Status in Firestore
         window.updateOrderStatus = async function (orderId, newStatus) {
-            try {
-                await updateDoc(doc(db, "orders", orderId), { status: newStatus });
-            } catch (error) {
-                alert("Status update error: " + error.message);
-            }
+            await updateDoc(doc(db, "orders", orderId), { status: newStatus });
         };
 
-        // Delete permanent order record
         window.deleteOrder = async function (orderId) {
-            if (confirm("Are you sure you want to delete this order record permanently from database?")) {
-                try {
-                    await deleteDoc(doc(db, "orders", orderId));
-                } catch (error) {
-                    alert("Order delete error: " + error.message);
-                }
-            }
+            if (confirm("Delete this order record?")) await deleteDoc(doc(db, "orders", orderId));
         };
 
 
-        // --- 👥 3. CUSTOMERS DATABASE LOGIC (Real-time track) ---
-        // --- 👥 3. CUSTOMERS LOGIC (With Master-Detail View) ---
+
+
+        // ==========================================
+        // 👥 CUSTOMERS LOGIC
+        // ==========================================
         let allCustomersData = [];
 
         function listenCustomersDatabase() {
-            const customersTableBody = document.getElementById('customersTableBody');
-
             onSnapshot(collection(db, "customers"), (querySnapshot) => {
                 allCustomersData = [];
-                customersTableBody.innerHTML = '';
+                querySnapshot.forEach(docSnap => allCustomersData.push({ id: docSnap.id, ...docSnap.data() }));
 
-                if (querySnapshot.empty) {
-                    customersTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No customer accounts registered yet.</td></tr>';
-                    return;
+                if (document.getElementById('customersTableBody')) window.renderCustomersTable(allCustomersData);
+
+                if (document.getElementById('dashCustomers')) {
+                    document.getElementById('dashCustomers').innerText = allCustomersData.length;
                 }
-
-                querySnapshot.forEach((docSnap) => {
-                    const cust = docSnap.data();
-                    cust.id = docSnap.id;
-                    allCustomersData.push(cust);
-                });
-
-                renderCustomersTable(allCustomersData);
             });
         }
 
-        // Table render karne ka function (Search support ke sath)
         window.renderCustomersTable = function (dataArray) {
             const tbody = document.getElementById('customersTableBody');
             tbody.innerHTML = '';
-
             if (dataArray.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No customers found.</td></tr>';
                 return;
             }
-
             dataArray.forEach(cust => {
-                let lastActive = cust.lastLogin ? new Date(cust.lastLogin).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
-
-                // Try to get name from address, else use ID format
-                let displayName = `Customer ID - ${cust.mobileNumber.substring(0, 6)}`;
-                if (cust.addresses && cust.addresses.length > 0 && typeof cust.addresses[0] === 'object') {
-                    displayName = cust.addresses[0].fullName;
-                }
+                let lastActive = cust.lastLogin ? new Date(cust.lastLogin).toLocaleDateString('en-GB') : '-';
+                let displayName = cust.addresses && cust.addresses.length > 0 && typeof cust.addresses[0] === 'object' ? cust.addresses[0].fullName : `Customer ID - ${cust.mobileNumber.substring(0, 6)}`;
 
                 tbody.innerHTML += `
                     <tr>
-                        <td>
-                            <div class="cust-avatar"></div>
-                            <span style="font-weight:600; color:#111;">${displayName}</span>
-                        </td>
+                        <td><div class="cust-avatar"></div><span style="font-weight:600; color:#111;">${displayName}</span></td>
                         <td>+91 ${cust.mobileNumber}</td>
                         <td>${lastActive}</td>
                         <td><span style="color:#28a745; font-weight:bold; font-size:12px;">ENABLED</span></td>
-                        <td>
-                            <button class="btn-add" onclick="window.viewCustomer('${cust.mobileNumber}')" style="padding: 6px 12px; font-size:12px;">View Profile</button>
-                        </td>
-                    </tr>
-                `;
+                        <td><button class="btn-add" onclick="window.viewCustomer('${cust.mobileNumber}')" style="padding: 6px 12px; font-size:12px;">View Profile</button></td>
+                    </tr>`;
             });
         }
 
-        // Live Search Filter Function
         window.filterCustomers = function () {
             const searchTerm = document.getElementById('searchCustomerInput').value.toLowerCase();
-            const filtered = allCustomersData.filter(c => c.mobileNumber.includes(searchTerm));
-            renderCustomersTable(filtered);
+            renderCustomersTable(allCustomersData.filter(c => c.mobileNumber.includes(searchTerm)));
         }
 
-        // 🌟 NAYA: Customer Detail Profile Open Karne Ka Logic
         window.viewCustomer = function (mobileNumber) {
             const cust = allCustomersData.find(c => c.mobileNumber === mobileNumber);
             if (!cust) return;
 
-            // 1. Screens switch karein
             document.getElementById('customer-list-container').style.display = 'none';
             document.getElementById('customer-detail-container').style.display = 'block';
 
-            // 2. Profile aur Sidebar set karein
-            let displayName = `Customer`;
-            if (cust.addresses && cust.addresses.length > 0 && typeof cust.addresses[0] === 'object') {
-                displayName = cust.addresses[0].fullName;
-            }
+            let displayName = cust.addresses && cust.addresses.length > 0 && typeof cust.addresses[0] === 'object' ? cust.addresses[0].fullName : 'Customer';
             document.getElementById('detSidebarName').innerText = displayName;
             document.getElementById('detSidebarPhone').innerText = `+91 ${cust.mobileNumber}`;
+            document.getElementById('detJoinedOn').innerText = cust.lastLogin ? new Date(cust.lastLogin).toLocaleDateString('en-GB') : '-';
 
-            let joinedDate = cust.lastLogin ? new Date(cust.lastLogin).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
-            document.getElementById('detJoinedOn').innerText = joinedDate;
-
-            // 3. Customer ki order history calculate karein (hum allLiveOrders array ka use karenge jo orders tab se aa raha hai)
             const custOrders = allLiveOrders.filter(o => o.customerMobile === mobileNumber);
-
             let totalSpent = 0;
-            let lastPurchDate = '-';
             const historyBody = document.getElementById('detPurchaseHistoryBody');
             historyBody.innerHTML = '';
 
             if (custOrders.length > 0) {
-                // Calculate Total & render list
                 custOrders.forEach(order => {
-                    // Agar order cancel nahi hua hai, toh usko total worth mein jodo
-                    if (order.status !== 'Cancelled') {
-                        totalSpent += parseFloat(order.totalAmount || 0);
-                    }
-
+                    if (order.status !== 'Cancelled') totalSpent += parseFloat(order.totalAmount || 0);
                     let oDate = order.orderDate ? new Date(order.orderDate).toLocaleDateString('en-GB') : '-';
                     let itemsCount = order.items ? order.items.reduce((sum, i) => sum + i.quantity, 0) : 0;
-                    let shortId = "ORD" + order.id.substring(0, 6).toUpperCase();
-
                     historyBody.innerHTML += `
                         <tr>
-                            <td><strong>${shortId}</strong></td>
+                            <td><strong>ORD${order.id.substring(0, 6).toUpperCase()}</strong></td>
                             <td>${oDate}</td>
                             <td>${itemsCount} Items</td>
                             <td>₹${order.totalAmount}</td>
-                            <td><span class="status-badge ${order.status}" style="padding:4px 8px; font-size:11px; border-radius:4px;">${order.status}</span></td>
-                        </tr>
-                    `;
+                            <td><span class="status-badge ${order.status}">${order.status}</span></td>
+                        </tr>`;
                 });
-
-                // Get most recent order date
-                const firstOrder = custOrders[0];
-                if (firstOrder && firstOrder.orderDate) {
-                    lastPurchDate = new Date(firstOrder.orderDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-                }
+                document.getElementById('detLastPurchase').innerText = new Date(custOrders[0].orderDate).toLocaleDateString('en-GB');
             } else {
-                historyBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#777;">No purchases made yet.</td></tr>`;
+                historyBody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No purchases made yet.</td></tr>`;
+                document.getElementById('detLastPurchase').innerText = '-';
             }
 
-            // Update DOM stats
             document.getElementById('detTotalOrders').innerText = custOrders.length;
             document.getElementById('detPurchaseWorth').innerText = `₹${totalSpent.toFixed(2)}`;
-            document.getElementById('detLastPurchase').innerText = lastPurchDate;
         }
 
-        // Back button function
         window.backToCustomerList = function () {
             document.getElementById('customer-detail-container').style.display = 'none';
             document.getElementById('customer-list-container').style.display = 'block';
         }
+        // STEP 1 TEST: Close Order Modal
+        window.closeOrderModal = function () {
+            document.getElementById('orderDetailModal').style.display = 'none';
+        };
 
-        // --- INITIALIZE ALL LISTENERS ---
-        fetchProducts(); // Products inventory
-        listenLiveOrders(); // Orders tab live updates
-        listenCustomersDatabase(); // Customers database live updates
+        // STEP 3: Complete Order Details
+        window.viewOrderDetails = function (orderId) {
+            const order = allLiveOrders.find(o => o.id === orderId);
+            if (!order) {
+                alert("Order nahi mila!");
+                return;
+            }
+
+            // 1. Basic details
+            document.getElementById('invOrderId').innerText = "ORD" + order.id.substring(0, 6).toUpperCase();
+            document.getElementById('invOrderDate').innerText = "Date: " + new Date(order.orderDate).toLocaleDateString('en-GB');
+            document.getElementById('invOrderStatus').innerText = order.status;
+
+            // 2. Customer & Address Details
+            let custName = "Customer";
+            let custPhone = "+91 " + order.customerMobile;
+            let fullAddress = "No address provided";
+
+            if (order.deliveryAddress) {
+                if (typeof order.deliveryAddress === 'object') {
+                    custName = order.deliveryAddress.fullName || custName;
+                    custPhone = order.deliveryAddress.mobile ? "+91 " + order.deliveryAddress.mobile : custPhone;
+                    fullAddress = `${order.deliveryAddress.building}, ${order.deliveryAddress.area}, ${order.deliveryAddress.city}, ${order.deliveryAddress.state} - ${order.deliveryAddress.pincode}`;
+                } else {
+                    fullAddress = order.deliveryAddress;
+                }
+            }
+
+            document.getElementById('invCustName').innerText = custName;
+            document.getElementById('invCustPhone').innerText = custPhone;
+            document.getElementById('invAddress').innerText = fullAddress;
+            document.getElementById('invPayment').innerText = order.paymentMethod || "COD";
+
+            // 3. Product Items List
+            const tbody = document.getElementById('invItemsBody');
+            tbody.innerHTML = '';
+            let subtotal = 0;
+
+            if (order.items && order.items.length > 0) {
+                order.items.forEach(item => {
+                    let itemTotal = parseFloat(item.sellingPrice) * item.quantity;
+                    subtotal += itemTotal;
+
+                    let freeTag = item.isFreeGift ? '<span style="color:#10b981; font-size:10px; font-weight:bold; margin-left:5px;">(FREE)</span>' : '';
+
+                    tbody.innerHTML += `
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 10px 12px; font-size: 13px; color: #111;">${item.name} ${freeTag}</td>
+                            <td style="padding: 10px 12px; text-align: center; font-size: 13px;">₹${item.sellingPrice}</td>
+                            <td style="padding: 10px 12px; text-align: center; font-size: 13px;">${item.quantity}</td>
+                            <td style="padding: 10px 12px; text-align: right; font-size: 13px; font-weight: bold;">₹${itemTotal}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // 4. Subtotal aur Discount set karna
+            let discount = 0;
+            if (order.couponApplied && order.couponApplied !== 'None') {
+                document.getElementById('invCouponCode').innerText = order.couponApplied;
+                discount = subtotal - parseFloat(order.totalAmount);
+            } else {
+                document.getElementById('invCouponCode').innerText = 'None';
+            }
+
+            document.getElementById('invSubtotal').innerText = "₹" + subtotal.toFixed(2);
+            document.getElementById('invDiscount').innerText = "-₹" + (discount > 0 ? discount.toFixed(2) : "0");
+            document.getElementById('invTotal').innerText = "₹" + parseFloat(order.totalAmount).toFixed(2);
+
+            // Modal show karo
+            document.getElementById('orderDetailModal').style.display = 'flex';
+        };
+
+        // FINAL CRASH-FREE PRINT FUNCTION
+        window.printInvoice = function () {
+            let printContent = document.getElementById('invoice-print-area').innerHTML;
+            let win = window.open('', '', 'width=900,height=700');
+            win.document.body.innerHTML = printContent;
+
+            setTimeout(function () {
+                win.print();
+                win.close();
+            }, 500);
+        };
+
     </script>
 </body>
 
