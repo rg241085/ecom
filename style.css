@@ -61,7 +61,7 @@ body {
     gap: 10px;
     background: #fff;
     position: sticky;
-    top: 53px;
+    top: 115px;
     z-index: 99;
     box-shadow: 0 4px 6px -4px rgba(0, 0, 0, 0.05);
     scrollbar-width: none;
@@ -100,7 +100,7 @@ body {
     background-color: #f3f5f7;
     height: calc(100vh - 105px);
     position: sticky;
-    top: 105px;
+    top: 167px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
